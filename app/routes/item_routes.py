@@ -1,11 +1,12 @@
-# item_routes.py
+import os
+import shutil
 
 from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
+from fastapi.responses import FileResponse  # Import for file response
 from sqlalchemy.orm import Session
+
 from app.models import Item, get_db
-from app.schemas import ItemCreate, ItemRead
-import shutil
-import os
+from app.schemas import ItemRead
 
 router = APIRouter()
 
@@ -37,3 +38,19 @@ def read_item(item_id: int, db: Session = Depends(get_db)):
     if item is None:
         raise HTTPException(status_code=404, detail="Item not found")
     return item
+
+
+# New endpoint to retrieve the file
+@router.get("/items/{item_id}/download", response_class=FileResponse)
+def download_item(item_id: int, db: Session = Depends(get_db)):
+    # Retrieve the item from the database
+    item = db.query(Item).filter(Item.id == item_id).first()
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    # Check if file exists in the storage
+    if not os.path.exists(item.file_path):
+        raise HTTPException(status_code=404, detail="File not found on server")
+
+    # Return the file using FileResponse
+    return FileResponse(path=item.file_path, filename=item.name, media_type='application/octet-stream')
