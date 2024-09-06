@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, create_engine
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, create_engine, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
@@ -72,21 +72,24 @@ class CollectionItem(Base):
 
 class Project(Base):
     """
-        Represents a project that can have multiple instances of 3D objects.
+    Represents a project that can have multiple instances of 3D objects.
 
-        Attributes:
-            id (int): Unique identifier for the project.
-            name (str): Name of the project.
-            description (str): Description of the project.
-            instances (List[Instance]): Relationship to the Instance class to associate projects with object instances.
-        """
+    Attributes:
+        id (int): Unique identifier for the project.
+        name (str): Name of the project.
+        description (str): Description of the project.
+        qr_code (bytes): QR code for the project stored as binary data.
+        instances (List[Instance]): Relationship to the Instance class to associate projects with object instances.
+    """
     __tablename__ = "projects"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    description = Column(String, index=True)
+    id = Column(Integer, primary_key=True, index=True, doc="Unique identifier for the project.")
+    name = Column(String, index=True, doc="Name of the project.")
+    description = Column(String, index=True, doc="Description of the project.")
+    qr_code = Column(LargeBinary, nullable=True, doc="QR code for the project stored as binary data.")
 
-    instances = relationship("Instance", back_populates="project")
+    instances = relationship("Instance", back_populates="project",
+                             doc="Relationship with Instance to manage object instances.")
 
 
 class Instance(Base):

@@ -4,3 +4,6 @@ sqlalchemy
 alembic
 pydantic
 python-multipart
+qrcode[pil]
+
+
