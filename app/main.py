@@ -1,8 +1,12 @@
 # app/main.py
 
 from fastapi import FastAPI
-from app.routes import item_routes
+
 from app.models import init_db
+from app.routes import collections_routes
+from app.routes import instances_routes
+from app.routes import item_routes
+from app.routes import projects_routes
 
 app = FastAPI()
 
@@ -14,7 +18,10 @@ def on_startup():
 
 
 # register routes
+app.include_router(collections_routes.router)
+app.include_router(instances_routes.router)
 app.include_router(item_routes.router)
+app.include_router(projects_routes.router)
 
 
 @app.get("/")
