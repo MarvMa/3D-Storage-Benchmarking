@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ItemCreate(BaseModel):
@@ -12,8 +12,7 @@ class ItemRead(BaseModel):
     description: str
     file_path: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CollectionCreate(BaseModel):
@@ -26,8 +25,7 @@ class CollectionRead(BaseModel):
     name: str
     description: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProjectCreate(BaseModel):
@@ -39,9 +37,9 @@ class ProjectRead(BaseModel):
     id: int
     name: str
     description: str
+    qr_code_url: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InstanceCreate(BaseModel):
@@ -72,5 +70,4 @@ class InstanceRead(BaseModel):
     scale_y: float
     scale_z: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

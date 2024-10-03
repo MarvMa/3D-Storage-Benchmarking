@@ -1,9 +1,8 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, create_engine, LargeBinary
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import relationship, sessionmaker, declarative_base;
 
 # Datenbankverbindungseinstellungen und Session-Setup
-DATABASE_URL = "sqlite:///./test.db"
+DATABASE_URL = "sqlite:///./arpas-dev.db"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -87,6 +86,7 @@ class Project(Base):
     name = Column(String, index=True, doc="Name of the project.")
     description = Column(String, index=True, doc="Description of the project.")
     qr_code = Column(LargeBinary, nullable=True, doc="QR code for the project stored as binary data.")
+    qr_code_url = Column(String, index=True, doc="URL where the qr-code points to")
 
     instances = relationship("Instance", back_populates="project",
                              doc="Relationship with Instance to manage object instances.")
