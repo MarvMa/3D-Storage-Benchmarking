@@ -11,6 +11,22 @@ router = APIRouter()
 
 @router.post("/instances/", response_model=InstanceRead)
 def create_instance(instance: InstanceCreate, db: Session = Depends(get_db)):
+    """
+       Create a new instance.
+
+       This endpoint allows the creation of a new instance associated with a project and an item.
+       The instance includes transformations like position, rotation, and scale.
+
+       Parameters:
+           - instance: JSON body containing the project_id, item_id, and transformation details.
+           - db: Database session (injected).
+
+       Returns:
+           - The newly created instance, including its ID and associated project/item details.
+
+       Raises:
+           - 404 HTTPException if the project or item is not found.
+       """
     # Ensure the project and item exist
     project = db.query(Project).filter(Project.id == instance.project_id).first()
     item = db.query(Item).filter(Item.id == instance.item_id).first()
@@ -41,6 +57,22 @@ def create_instance(instance: InstanceCreate, db: Session = Depends(get_db)):
 
 @router.get("/instances/{instance_id}", response_model=InstanceRead)
 def get_instance(instance_id: int, db: Session = Depends(get_db)):
+    """
+       Retrieve an instance by its ID.
+
+       This endpoint retrieves an instance's details using its unique ID.
+       If the instance is not found, a 404 error is returned.
+
+       Parameters:
+           - instance_id: The unique ID of the instance to retrieve.
+           - db: Database session (injected).
+
+       Returns:
+           - The instance's details, including its transformations and associated project/item.
+
+       Raises:
+           - 404 HTTPException if the instance is not found.
+       """
     instance = db.query(Instance).filter(Instance.id == instance_id).first()
     if instance is None:
         raise HTTPException(status_code=404, detail="Instance not found")
@@ -49,12 +81,39 @@ def get_instance(instance_id: int, db: Session = Depends(get_db)):
 
 @router.get("/instances/", response_model=List[InstanceRead])
 def list_instances(db: Session = Depends(get_db)):
+    """
+        List all instances.
+
+        This endpoint retrieves and returns all instances stored in the database.
+
+        Parameters:
+            - db: Database session (injected).
+
+        Returns:
+            - A list of instances, each containing its transformations and associated project/item.
+        """
     instances = db.query(Instance).all()
     return instances
 
 
 @router.delete("/instances/{instance_id}", status_code=204)
 def delete_instance(instance_id: int, db: Session = Depends(get_db)):
+    """
+        Delete an instance by its ID.
+
+        This endpoint deletes an instance using its unique ID.
+        If the instance is not found, a 404 error is returned.
+
+        Parameters:
+            - instance_id: The unique ID of the instance to delete.
+            - db: Database session (injected).
+
+        Returns:
+            - A message confirming that the instance has been deleted successfully.
+
+        Raises:
+            - 404 HTTPException if the instance is not found.
+        """
     instance = db.query(Instance).filter(Instance.id == instance_id).first()
     if instance is None:
         raise HTTPException(status_code=404, detail="Instance not found")

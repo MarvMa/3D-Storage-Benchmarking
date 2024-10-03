@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, create_engine, LargeBinary
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base;
 
-# Datenbankverbindungseinstellungen und Session-Setup
+# Database-Connection Settings and Session setup
 DATABASE_URL = "sqlite:///./arpas-dev.db"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

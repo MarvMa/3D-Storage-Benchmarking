@@ -15,8 +15,17 @@ router = APIRouter()
 @router.post("/projects/", response_model=ProjectRead)
 def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     """
-    Create a new project with the provided name and description, generate a QR code, and store it in the database.
-    """
+        Create a new project.
+
+        This endpoint allows users to create a new project with the provided name and description. A QR code will be generated and stored in the database for the project.
+
+        Parameters:
+            - project: The project details (name and description).
+            - db: Database session (injected).
+
+        Returns:
+            - The newly created project with its QR code URL.
+        """
     # Create the new project
     new_project = Project(name=project.name, description=project.description)
     db.add(new_project)
@@ -31,7 +40,7 @@ def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     qr_bytes = BytesIO()
     qr.save(qr_bytes, format="PNG")
     new_project.qr_code = qr_bytes.getvalue()
-    new_project.qr_code_url = project_url  # Store the QR code URL in the database
+    new_project.qr_code_url = project_url
 
     db.commit()
 
@@ -42,9 +51,20 @@ def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
 @router.get("/projects/{project_id}/qr", response_class=Response)
 def get_project_qr_code(project_id: int, db: Session = Depends(get_db)):
     """
-    Retrieve the QR code for a specific project by its ID from the database.
-    """
-    # Projekt aus der Datenbank abrufen
+       Retrieve the QR code of a project.
+
+       This endpoint allows users to retrieve the QR code for a specific project by its ID.
+
+       Parameters:
+           - project_id: The unique ID of the project.
+           - db: Database session (injected).
+
+       Returns:
+           - The QR code of the project as a PNG image.
+
+       Raises:
+           - 404 HTTPException if the project or QR code is not found.
+       """
     project = db.query(Project).filter(Project.id == project_id).first()
     if project is None or project.qr_code is None:
         raise HTTPException(status_code=404, detail="QR code not found for this project")
@@ -55,7 +75,19 @@ def get_project_qr_code(project_id: int, db: Session = Depends(get_db)):
 @router.get("/projects/{project_id}", response_model=ProjectRead)
 def get_project(project_id: int, db: Session = Depends(get_db)):
     """
-    Retrieve a project by its ID.
+    Retrieve project details by ID.
+
+    This endpoint allows users to retrieve the details of a project based on its ID.
+
+    Parameters:
+        - project_id: The unique ID of the project.
+        - db: Database session (injected).
+
+    Returns:
+        - The details of the project including its name, description, and QR code URL.
+
+    Raises:
+        - 404 HTTPException if the project is not found.
     """
     project = db.query(Project).filter(Project.id == project_id).first()
     if project is None:
@@ -72,8 +104,16 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
 @router.get("/projects/", response_model=List[ProjectRead])
 def list_projects(db: Session = Depends(get_db)):
     """
-    Retrieve a list of all projects.
-    """
+        Retrieve a list of all projects.
+
+        This endpoint allows users to retrieve a list of all projects stored in the database.
+
+        Parameters:
+            - db: Database session (injected).
+
+        Returns:
+            - A list of all projects including their name, description, and QR code URL.
+        """
     projects = db.query(Project).all()
 
     # Ensure all projects have a qr_code_url
@@ -88,7 +128,15 @@ def list_projects(db: Session = Depends(get_db)):
 @router.delete("/projects/{project_id}", status_code=204)
 def delete_project(project_id: int, db: Session = Depends(get_db)):
     """
-    Delete a project by its ID.
+    Retrieve a list of all projects.
+
+    This endpoint allows users to retrieve a list of all projects stored in the database.
+
+    Parameters:
+        - db: Database session (injected).
+
+    Returns:
+        - A list of all projects including their name, description, and QR code URL.
     """
     project = db.query(Project).filter(Project.id == project_id).first()
     if project is None:

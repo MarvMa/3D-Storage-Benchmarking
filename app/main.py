@@ -11,10 +11,8 @@ from app.routes import projects_routes
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup-Logik: init_db() wird beim Start der Anwendung aufgerufen
     init_db()
     yield
-    # Hier könntest du auch eine Shutdown-Logik einfügen, falls nötig
 
 
 app = FastAPI(lifespan=lifespan)
