@@ -55,6 +55,57 @@ def create_instance(instance: InstanceCreate, db: Session = Depends(get_db)):
     return new_instance
 
 
+@router.put("/instances/{instance_id}", response_model=InstanceRead)
+def update_instance(instance_id: int, instance_update: InstanceCreate, db: Session = Depends(get_db)):
+    """
+       Update an existing instance.
+
+       This endpoint allows updating an existing instance's transformation details (position, rotation, and scale),
+       as well as changing the associated project or item.
+
+       Parameters:
+           - instance_id: The unique ID of the instance to update.
+           - instance_update: JSON body containing the updated project_id, item_id, and transformation details.
+           - db: Database session (injected).
+
+       Returns:
+           - The updated instance, including its new details.
+
+       Raises:
+           - 404 HTTPException if the instance, project, or item is not found.
+    """
+    # Ensure the instance exists
+    existing_instance = db.query(Instance).filter(Instance.id == instance_id).first()
+    if existing_instance is None:
+        raise HTTPException(status_code=404, detail="Instance not found")
+
+    # Ensure the project and item exist
+    project = db.query(Project).filter(Project.id == instance_update.project_id).first()
+    item = db.query(Item).filter(Item.id == instance_update.item_id).first()
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    # Update the instance's attributes
+    existing_instance.project_id = instance_update.project_id
+    existing_instance.item_id = instance_update.item_id
+    existing_instance.position_x = instance_update.position_x
+    existing_instance.position_y = instance_update.position_y
+    existing_instance.position_z = instance_update.position_z
+    existing_instance.rotation_x = instance_update.rotation_x
+    existing_instance.rotation_y = instance_update.rotation_y
+    existing_instance.rotation_z = instance_update.rotation_z
+    existing_instance.scale_x = instance_update.scale_x
+    existing_instance.scale_y = instance_update.scale_y
+    existing_instance.scale_z = instance_update.scale_z
+
+    # Commit the changes to the database
+    db.commit()
+    db.refresh(existing_instance)
+    return existing_instance
+
+
 @router.get("/instances/{instance_id}", response_model=InstanceRead)
 def get_instance(instance_id: int, db: Session = Depends(get_db)):
     """

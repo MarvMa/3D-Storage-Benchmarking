@@ -48,6 +48,53 @@ def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     return new_project
 
 
+@router.put("/projects/{project_id}", response_model=ProjectRead)
+def update_project(
+        project_id: int,
+        project_update: ProjectCreate,
+        db: Session = Depends(get_db)
+):
+    """
+    Update an existing project.
+
+    This endpoint allows users to update the name and description of an existing project.
+    Optionally, the QR code will be regenerated if the project name or description is changed.
+
+    Parameters:
+        - project_id: The unique ID of the project to be updated.
+        - project_update: The updated project details (name and description).
+        - db: Database session (injected).
+
+    Returns:
+        - The updated project details, including its QR code URL.
+
+    Raises:
+        - 404 HTTPException if the project is not found.
+    """
+    # Retrieve the project from the database
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Update the project's name and description
+    project.name = project_update.name
+    project.description = project_update.description
+
+    # Regenerate the QR code if necessary
+    project_url = f"http://localhost:8000/projects/{project.id}/qr"
+    qr = qrcode.make(project_url)
+    qr_bytes = BytesIO()
+    qr.save(qr_bytes, format="PNG")
+    project.qr_code = qr_bytes.getvalue()
+    project.qr_code_url = project_url
+
+    # Commit the changes to the database
+    db.commit()
+    db.refresh(project)
+
+    return project
+
+
 @router.get("/projects/{project_id}/qr", response_class=Response)
 def get_project_qr_code(project_id: int, db: Session = Depends(get_db)):
     """

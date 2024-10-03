@@ -31,6 +31,33 @@ def create_collection(collection: CollectionCreate, db: Session = Depends(get_db
     return new_collection
 
 
+@router.put("/collections/{collection_id}", response_model=CollectionRead)
+def update_collection(collection_id: int, collection: CollectionCreate, db: Session = Depends(get_db)):
+    """
+       Update an existing collection.
+
+       This endpoint allows updating an existing collection's name and description.
+       If the collection is not found, a 404 error is returned.
+
+       Parameters:
+           - collection_id: The unique ID of the collection to update.
+           - collection: JSON body containing the updated name and description.
+           - db: Database session (injected).
+
+       Returns:
+           - The updated collection, including its ID, name, and description.
+       """
+    existing_collection = db.query(Collection).filter(Collection.id == collection_id).first()
+    if existing_collection is None:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    existing_collection.name = collection.name
+    existing_collection.description = collection.description
+    db.commit()
+    db.refresh(existing_collection)
+    return existing_collection
+
+
 @router.get("/collections/{collection_id}", response_model=CollectionRead)
 def get_collection(collection_id: int, db: Session = Depends(get_db)):
     """

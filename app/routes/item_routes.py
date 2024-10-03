@@ -52,6 +52,63 @@ def create_item(
     return new_item
 
 
+@router.put("/items/{item_id}", response_model=ItemRead)
+def update_item(
+        item_id: int,
+        name: str = Form(...),
+        description: str = Form(...),
+        file: UploadFile = File(None),  # File is optional
+        db: Session = Depends(get_db)):
+    """
+       Update an existing item.
+
+       This endpoint allows users to update the name, description, and optionally the file of an existing item.
+
+       Parameters:
+           - item_id: The unique ID of the item to be updated.
+           - name: The new name of the item (as a form field).
+           - description: The new description of the item (as a form field).
+           - file: The new file to be uploaded (optional).
+           - db: Database session (injected).
+
+       Returns:
+           - The updated item details, including its ID.
+
+       Raises:
+           - 404 HTTPException if the item is not found.
+           - 400 HTTPException if file update fails.
+    """
+    # Retrieve the item from the database
+    item = db.query(Item).filter(Item.id == item_id).first()
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    # Update the item's name and description
+    item.name = name
+    item.description = description
+
+    # If a new file is uploaded, update the file as well
+    if file:
+        # Remove old file if it exists
+        if os.path.exists(item.file_path):
+            os.remove(item.file_path)
+
+        # Save new file to disk
+        file_location = f"{UPLOAD_DIRECTORY}/{file.filename}"
+        try:
+            with open(file_location, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            item.file_path = file_location
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to update file: {str(e)}")
+
+    # Commit the updates to the database
+    db.commit()
+    db.refresh(item)
+
+    return item
+
+
 @router.get("/items/{item_id}", response_model=ItemRead)
 def read_item(item_id: int, db: Session = Depends(get_db)):
     """

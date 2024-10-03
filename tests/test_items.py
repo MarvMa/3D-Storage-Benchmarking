@@ -25,6 +25,73 @@ def test_create_item_missing_file(client_with_db):
     assert response.status_code == 422  # Unprocessable Entity (file is required)
 
 
+def test_update_item(client_with_db):
+    """
+    Test the /items/{item_id} PUT endpoint
+    """
+    # Create an item
+    response = client_with_db.post(
+        "/items/",
+        data={"name": "Test Item for Update", "description": "Test Description"},
+        files={"file": ("test.gltf", b"Some Gltf File Content", "application/octet-stream")},
+    )
+    assert response.status_code == 200
+    item_id = response.json()["id"]
+
+    # Update the item with new name and description
+    response = client_with_db.put(
+        f"/items/{item_id}",
+        data={"name": "Updated Item", "description": "Updated Description"},
+    )
+    assert response.status_code == 200
+    json_data = response.json()
+    assert json_data["name"] == "Updated Item"
+    assert json_data["description"] == "Updated Description"
+
+
+def test_update_item_with_file(client_with_db):
+    """
+    Test the /items/{item_id} PUT endpoint with file update
+    """
+    # Create an item
+    response = client_with_db.post(
+        "/items/",
+        data={"name": "Test Item for File Update", "description": "Test Description"},
+        files={"file": ("test.gltf", b"Some Gltf File Content", "application/octet-stream")},
+    )
+    assert response.status_code == 200
+    item_id = response.json()["id"]
+
+    # Update the item with a new file
+    response = client_with_db.put(
+        f"/items/{item_id}",
+        data={"name": "Updated Item with New File", "description": "Updated Description"},
+        files={"file": ("updated.gltf", b"Updated Gltf File Content", "application/octet-stream")},
+    )
+    assert response.status_code == 200
+    json_data = response.json()
+    assert json_data["name"] == "Updated Item with New File"
+    assert json_data["description"] == "Updated Description"
+
+    # Verify that the file was updated by downloading it
+    response = client_with_db.get(f"/items/{item_id}/download")
+    assert response.status_code == 200
+    assert response.headers["content-disposition"].startswith("attachment")
+    assert response.content == b"Updated Gltf File Content"
+
+
+def test_update_item_not_found(client_with_db):
+    """
+    Test the /items/{item_id} PUT endpoint with a non-existent item to trigger a 404 error.
+    """
+    response = client_with_db.put(
+        "/items/9999",
+        data={"name": "Non-existent Item", "description": "Should not work"},
+    )
+    assert response.status_code == 404  # Item not found
+    assert response.json()["detail"] == "Item not found"
+
+
 def test_read_item(client_with_db):
     """
     Test the /items/{item_id} GET endpoint

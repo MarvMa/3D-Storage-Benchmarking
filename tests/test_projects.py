@@ -16,6 +16,67 @@ def test_create_project(client_with_db):
     assert "qr_code_url" in json_data
 
 
+def test_update_project(client_with_db, db_session):
+    """
+    Test updating a project using the /projects/{project_id} PUT endpoint.
+    """
+    # Create a project in the test database
+    project = Project(name="Original Project", description="Original Description")
+    db_session.add(project)
+    db_session.commit()
+
+    # Update the project
+    response = client_with_db.put(
+        f"/projects/{project.id}",
+        json={"name": "Updated Project", "description": "Updated Description"}
+    )
+    assert response.status_code == 200
+    json_data = response.json()
+    assert json_data["name"] == "Updated Project"
+    assert json_data["description"] == "Updated Description"
+
+
+def test_update_project_not_found(client_with_db):
+    """
+    Test updating a non-existent project to trigger a 404 error.
+    """
+    response = client_with_db.put(
+        "/projects/9999",
+        json={"name": "Non-existent Project", "description": "Should not work"}
+    )
+    assert response.status_code == 404  # Project not found
+    json_data = response.json()
+    assert json_data["detail"] == "Project not found"
+
+
+def test_update_project_qr_code(client_with_db, db_session):
+    """
+    Test updating a project and regenerating its QR code via the /projects/{project_id} PUT endpoint.
+    """
+    # Create a project in the test database
+    response = client_with_db.post(
+        "/projects/",
+        json={"name": "Original Project QR", "description": "Original Description"}
+    )
+    assert response.status_code == 200
+    project_id = response.json()["id"]
+
+    # Update the project, which should regenerate the QR code
+    response = client_with_db.put(
+        f"/projects/{project_id}",
+        json={"name": "Updated Project QR", "description": "Updated Description"}
+    )
+    assert response.status_code == 200
+    json_data = response.json()
+    assert json_data["name"] == "Updated Project QR"
+    assert json_data["description"] == "Updated Description"
+
+    # Verify the QR code is updated by downloading it
+    response = client_with_db.get(f"/projects/{project_id}/qr")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+
+
 def test_get_project(client_with_db, db_session):
     """
     Test retrieving a project by ID using the /projects/{project_id} GET endpoint.
