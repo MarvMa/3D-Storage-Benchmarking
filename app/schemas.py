@@ -1,3 +1,5 @@
+from typing import Optional, List
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -41,6 +43,7 @@ class CollectionCreate(BaseModel):
     """
     name: str
     description: str
+    item_ids: Optional[List[int]] = None  # List of item IDs to associate with the collection
 
 
 class CollectionRead(BaseModel):
@@ -51,10 +54,17 @@ class CollectionRead(BaseModel):
         - id (int): The unique identifier of the collection.
         - name (str): The name of the collection.
         - description (str): A brief description of the collection.
-    """
     id: int
     name: str
     description: str
+    items: Optional[List[int]] = None  # List of associated item IDs
+
+    model_config = ConfigDict(from_attributes=True)
+     """
+    id: int
+    name: str
+    description: str
+    items: Optional[List[int]] = None  # List of associated item IDs
 
     model_config = ConfigDict(from_attributes=True)
 
