@@ -33,6 +33,10 @@ class ItemService:
         Raises:
             - HTTPException with status code 500 if the file upload fails.
         """
+        # Validate input
+        if not name or not description:
+            raise HTTPException(status_code=400, detail="Name and description are required fields.")
+
         # Ensure the upload directory exists
         if not os.path.exists(UPLOAD_DIRECTORY):
             os.makedirs(UPLOAD_DIRECTORY)

@@ -16,21 +16,26 @@ class ProjectService:
     """
 
     @staticmethod
-    def create_project(db: Session, project_data):
+    def create_project(db: Session, project_data: dict):
         """
         Create a new project and generate a QR code for it.
 
         Parameters:
             - db: Database session.
-            - project_data: The project details including name and description.
+            - project_data: The project details including name and description (as a dict).
 
         Returns:
             - The newly created project with its QR code URL.
 
         Raises:
+            - HTTPException with status code 400 if name or description are invalid.
             - HTTPException with status code 500 if QR code generation fails.
         """
-        new_project = Project(name=project_data.name, description=project_data.description)
+        # Validate input
+        if not project_data.get('name') or not project_data.get('description'):
+            raise HTTPException(status_code=400, detail="Name and description are required fields.")
+
+        new_project = Project(name=project_data['name'], description=project_data['description'])
         db.add(new_project)
         db.commit()
         db.refresh(new_project)
@@ -39,24 +44,27 @@ class ProjectService:
         project_url = f"http://localhost:8000/projects/{new_project.id}/qr"
 
         # Generate and store the QR code as binary data
-        qr = qrcode.make(project_url)
-        qr_bytes = BytesIO()
-        qr.save(qr_bytes, format="PNG")
-        new_project.qr_code = qr_bytes.getvalue()
-        new_project.qr_code_url = project_url
+        try:
+            qr = qrcode.make(project_url)
+            qr_bytes = BytesIO()
+            qr.save(qr_bytes, format="PNG")
+            new_project.qr_code = qr_bytes.getvalue()
+            new_project.qr_code_url = project_url
+        except Exception as e:
+            raise HTTPException(status_code=500, detail="Failed to generate QR code.")
 
         db.commit()
         return new_project
 
     @staticmethod
-    def update_project(db: Session, project_id: int, project_data):
+    def update_project(db: Session, project_id: int, project_data: dict):
         """
         Update an existing project and regenerate the QR code if necessary.
 
         Parameters:
             - db: Database session.
             - project_id: The unique ID of the project to update.
-            - project_data: The updated project details including name and description.
+            - project_data: The updated project details including name and description (as a dict).
 
         Returns:
             - The updated project details, including its QR code URL.
@@ -69,8 +77,8 @@ class ProjectService:
             raise HTTPException(status_code=404, detail="Project not found")
 
         # Update the project's name and description
-        project.name = project_data.name
-        project.description = project_data.description
+        project.name = project_data['name']
+        project.description = project_data['description']
 
         # Regenerate the QR code
         project_url = f"http://localhost:8000/projects/{project.id}/qr"

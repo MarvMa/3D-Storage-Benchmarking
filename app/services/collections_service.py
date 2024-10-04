@@ -28,6 +28,10 @@ class CollectionService:
         Raises:
             - HTTPException with status code 404 if any item in the provided item_ids is not found.
         """
+        # check if name is present
+        if not name:
+            raise HTTPException(status_code=400, detail="Collection name is required")
+
         new_collection = Collection(name=name, description=description)
         db.add(new_collection)
         db.commit()
@@ -209,3 +213,4 @@ class CollectionService:
 
         db.delete(collection)
         db.commit()
+        return {"message": "Collection deleted successfully"}
