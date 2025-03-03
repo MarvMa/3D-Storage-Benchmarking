@@ -8,3 +8,4 @@ qrcode[pil]
 pytest
 pytest-cov
 minio
+locust
