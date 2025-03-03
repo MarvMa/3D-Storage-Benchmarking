@@ -4,9 +4,12 @@ import shutil
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.config import get_storage_backend
 from app.models import Item
 
 UPLOAD_DIRECTORY = "./uploaded_models"
+
+storage_backend = get_storage_backend()
 
 
 class ItemService:
@@ -33,21 +36,15 @@ class ItemService:
         Raises:
             - HTTPException with status code 500 if the file upload fails.
         """
-        # Validate input
         if not name or not description:
             raise HTTPException(status_code=400, detail="Name and description are required fields.")
 
-        # Ensure the upload directory exists
-        if not os.path.exists(UPLOAD_DIRECTORY):
-            os.makedirs(UPLOAD_DIRECTORY)
-
-        # Save file to disk
         file_location = f"{UPLOAD_DIRECTORY}/{file.filename}"
-        with open(file_location, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        # Save item info to the database
         new_item = Item(name=name, description=description, file_path=file_location)
+
+
+        storage_backend.save_file(new_item.id, file)
+
         db.add(new_item)
         db.commit()
         db.refresh(new_item)
@@ -55,6 +52,7 @@ class ItemService:
         return new_item
 
     @staticmethod
+    # TODO: Add updating mechanism for the file
     def update_item(db: Session, item_id: int, name: str, description: str, file=None):
         """
         Update an existing item, including its name, description, and optionally its file.
@@ -142,10 +140,7 @@ class ItemService:
         if item is None:
             raise HTTPException(status_code=404, detail="Item not found")
 
-        if not os.path.exists(item.file_path):
-            raise HTTPException(status_code=404, detail="File not found on server")
-
-        return item.file_path
+        return storage_backend.load_file(item.id);
 
     @staticmethod
     def delete_item(db: Session, item_id: int):
@@ -166,10 +161,7 @@ class ItemService:
         if item is None:
             raise HTTPException(status_code=404, detail="Item not found")
 
-        # Delete the file from the server
-        if os.path.exists(item.file_path):
-            os.remove(item.file_path)
-
+        storage_backend.delete_file(item.id)
         # Delete the item from the database
         db.delete(item)
         db.commit()

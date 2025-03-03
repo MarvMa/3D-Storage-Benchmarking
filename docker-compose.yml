@@ -1,12 +1,69 @@
 version: '3.8'
 
 services:
-  web:
+  web_file:
     build: .
+    container_name: arpas_backend_file
     ports:
-      - "8000:8000"
+      - "8001:8000"
+    env_file:
+      - .env
+    environment:
+      - STORAGE_BACKEND=file
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
       - .:/app
+      - ./uploaded_files:/app/uploaded_files
+  # Database (BLOB) storage
+  web_db:
+    build: .
+    container_name: arpas_backend_db
+    ports:
+      - "8002:8000"
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=sqlite:///app.db
+      - STORAGE_BACKEND=db
+      - DATABASE_URL=sqlite:///./arpas-dev.db
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - .:/app
+  # FastAPI service
+  web_minio:
+    build: .
+    container_name: arpas_backend_minio
+    ports:
+      - "8000:8000"
+    # Load environment variables from .env
+    env_file:
+      - .env
+    # Optionally, you can also re-declare them explicitly for clarity:
+    environment:
+      - STORAGE_BACKEND=minio
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
+      - DATABASE_URL=${DATABASE_URL}
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - .:/app
+      - ./uploaded_files:/app/uploaded_files
+
+  # MinIO service
+  minio:
+    image: minio/minio:latest
+    container_name: minio_arpas_storage
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"  # RESTful API Port
+      - "9001:9001"  # MinIO browser console
+    environment:
+      # Use the same credentials you set in .env
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+
+volumes:
+  minio_data:

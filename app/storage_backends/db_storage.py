@@ -36,11 +36,11 @@ class DBStorage(StorageInterface):
         finally:
             db_session.close()
 
-    def load_file(self, object_id: str) -> bytes | None:
+    def load_file(self, object_id: str) -> bytes:
         db_session = self.SessionLocal()
         try:
             obj = db_session.query(ThreeDObject).filter_by(object_id=object_id).first()
-            return obj.file_blob
+            return obj.file_blob if obj else "01".encode()
         finally:
             db_session.close()
 
