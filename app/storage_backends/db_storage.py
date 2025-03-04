@@ -1,4 +1,4 @@
-from fastapi import UploadFile
+from fastapi import UploadFile, HTTPException
 from sqlalchemy import create_engine, Column, String, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -36,14 +36,16 @@ class DBStorage(StorageInterface):
         finally:
             db_session.close()
 
-
     async def load_file(self, object_id: str) -> bytes:
         db_session = self.SessionLocal()
+        obj = None
         try:
             obj = db_session.query(ThreeDObject).filter_by(object_id=object_id).first()
-            return obj.file_blob if obj else "01".encode()
+            return obj.file_blob
         finally:
             db_session.close()
+            if obj is None:
+                raise HTTPException(status_code=404, detail="File not found")
 
     async def delete_file(self, object_id: str) -> None:
         db_session = self.SessionLocal()

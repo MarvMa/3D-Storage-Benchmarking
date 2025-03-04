@@ -1,6 +1,3 @@
-import os
-import shutil
-
 from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
@@ -51,7 +48,6 @@ class ItemService:
         return new_item
 
     @staticmethod
-    # TODO: Add updating mechanism for the file
     async def update_item(db: Session, item_id: int, name: str, description: str, file=None):
         """
         Update an existing item, including its name, description, and optionally its file.
@@ -79,22 +75,15 @@ class ItemService:
         item.name = name
         item.description = description
 
-        # If a new file is uploaded, update the file as well
         if file:
-            # Remove old file if it exists
-            if os.path.exists(item.file_path):
-                os.remove(item.file_path)
+            await storage_backend.delete_file(item.id)
 
-            # Save new file to disk
-            file_location = f"{UPLOAD_DIRECTORY}/{file.filename}"
             try:
-                with open(file_location, "wb") as buffer:
-                    shutil.copyfileobj(file.file, buffer)
-                item.file_path = file_location
+                await storage_backend.save_file(item.id, file)
+                item.file_path = f"{UPLOAD_DIRECTORY}/{file.filename}"
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"Failed to update file: {str(e)}")
 
-        # Commit the updates to the database
         db.commit()
         db.refresh(item)
 
@@ -139,7 +128,7 @@ class ItemService:
         if item is None:
             raise HTTPException(status_code=404, detail="Item not found")
 
-        return await storage_backend.load_file(item.id);
+        return await storage_backend.load_file(item.id)
 
     @staticmethod
     async def delete_item(db: Session, item_id: int):

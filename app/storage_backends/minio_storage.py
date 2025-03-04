@@ -18,7 +18,7 @@ class MinioStorage(StorageInterface):
         self.bucket_name = bucket_name
 
         bucket = self.client.bucket_exists(self.bucket_name)
-        if not bucket:
+        if not self.client.bucket_exists(self.bucket_name):
             self.client.make_bucket(self.bucket_name)
 
     async def save_file(self, object_id: str, file: UploadFile) -> None:
@@ -37,6 +37,8 @@ class MinioStorage(StorageInterface):
         )
 
     async def load_file(self, object_id: str) -> bytes:
+        if not isinstance(object_id, str):
+            object_id = str(object_id)
         try:
             response = self.client.get_object(self.bucket_name, object_id)
             data = response.read()
@@ -47,6 +49,8 @@ class MinioStorage(StorageInterface):
             return b""
 
     async def delete_file(self, object_id: str) -> None:
+        if not isinstance(object_id, str):
+            object_id = str(object_id)
         try:
             self.client.remove_object(self.bucket_name, object_id)
         except S3Error:

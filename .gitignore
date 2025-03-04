@@ -141,3 +141,5 @@ cython_debug/
 
 # Additional project-specific files
 uploaded_models/  # Ignore folder storing uploaded models
+
+uploaded_files/

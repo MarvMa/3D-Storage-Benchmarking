@@ -11,17 +11,19 @@ class FileStorage(StorageInterface):
         os.makedirs(self.folder, exist_ok=True)
 
     async def save_file(self, object_id: str, file: UploadFile) -> None:
-        destination = os.path.join(self.folder, object_id)
-        file_bytes = await file.read()
+        destination = os.path.join(self.folder, str(object_id))
+        content = await file.read() if hasattr(file, "read") and callable(file.read) else file.read()
         with open(destination, "wb") as dst:
-            dst.write(file_bytes)
+            dst.write(content)
 
-    async def load_file(self, object_id: str) -> bytes:
-        path = os.path.join(self.folder, object_id)
-        with open(path, "rb") as src:
-            return src.read()
+    async def load_file(self, object_id):
+        path = os.path.join(self.folder, str(object_id))
+        if not os.path.exists(path):
+            return None
+        with open(path, "rb") as f:
+            return f.read()
 
-    async def delete_file(self, object_id: str) -> None:
-        path = os.path.join(self.folder, object_id)
+    async def delete_file(self, object_id):
+        path = os.path.join(self.folder, str(object_id))
         if os.path.exists(path):
             os.remove(path)

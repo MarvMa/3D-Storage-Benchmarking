@@ -1,20 +1,24 @@
-from fastapi import APIRouter, Depends, File, UploadFile, Form
+import io
+
+from fastapi import APIRouter, Depends, File, UploadFile, Form, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from starlette.responses import StreamingResponse
 
-from app.models import get_db
+from app.models import get_db, Item
 from app.schemas import ItemRead
 from app.services.item_service import ItemService
 
 router = APIRouter()
 
 
-@router.post("/items/", response_model=ItemRead)
+@router.post("/items/")
 async def create_item(
         name: str = Form(...),
         description: str = Form(...),
         file: UploadFile = File(...),
-        db: Session = Depends(get_db)):
+        db: Session = Depends(get_db)
+):
     """
     Upload a new item.
 
@@ -99,8 +103,23 @@ async def download_item(item_id: int, db: Session = Depends(get_db)):
     Raises:
         - 404 HTTPException if the item is not found or the file does not exist on the server.
     """
-    file_path = await ItemService.download_item(db, item_id)
-    return FileResponse(path=file_path, filename=file_path.split("/")[-1], media_type='application/octet-stream')
+
+    item = db.query(Item).filter(Item.id == item_id).first()
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    file_data = await ItemService.download_item(db, item_id)
+    if not file_data or not isinstance(file_data, bytes):
+        raise HTTPException(status_code=404, detail="File not found or invalid file data")
+
+    stream = io.BytesIO(file_data)
+    filename = f"{item.id}.gltf"  # Oder verwende z. B. item.name, falls vorhanden
+
+    return StreamingResponse(
+        stream,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 
 @router.delete("/items/{item_id}", status_code=204)
