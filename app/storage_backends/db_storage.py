@@ -1,3 +1,4 @@
+from fastapi import UploadFile
 from sqlalchemy import create_engine, Column, String, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -20,23 +21,23 @@ class DBStorage(StorageInterface):
         Base.metadata.create_all(self.engine)
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
 
-    def save_file(self, object_id: str, file: bytes) -> None:
+    async def save_file(self, object_id: str, file: UploadFile) -> None:
         db_session = self.SessionLocal()
         try:
             existing_obj = db_session.query(ThreeDObject).filter_by(object_id=object_id).first()
             if existing_obj:
-                # Update existing
                 existing_obj.file_blob = file
             else:
-                # Create new
-                new_obj = ThreeDObject(object_id=object_id, file_blob=file)
+                file_bytes = await file.read()
+                new_obj = ThreeDObject(object_id=object_id, file_blob=file_bytes)
                 db_session.add(new_obj)
 
             db_session.commit()
         finally:
             db_session.close()
 
-    def load_file(self, object_id: str) -> bytes:
+
+    async def load_file(self, object_id: str) -> bytes:
         db_session = self.SessionLocal()
         try:
             obj = db_session.query(ThreeDObject).filter_by(object_id=object_id).first()
@@ -44,7 +45,7 @@ class DBStorage(StorageInterface):
         finally:
             db_session.close()
 
-    def delete_file(self, object_id: str) -> None:
+    async def delete_file(self, object_id: str) -> None:
         db_session = self.SessionLocal()
         try:
             obj = db_session.query(ThreeDObject).filter_by(object_id=object_id).first()

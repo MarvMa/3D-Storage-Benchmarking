@@ -26,15 +26,7 @@ class InstanceService:
         Raises:
             - HTTPException with status code 404 if the project or item is not found.
         """
-        # Ensure the project and item exist
-        project = db.query(Project).filter(Project.id == instance_data.project_id).first()
-        item = db.query(Item).filter(Item.id == instance_data.item_id).first()
-        if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
-        if item is None:
-            raise HTTPException(status_code=404, detail="Item not found")
-
-        # Create and save the new instance
+        ensure_project_or_item_exists(db, project_id=instance_data.project_id, item_id=instance_data.item_id)
         new_instance = Instance(
             project_id=instance_data.project_id,
             item_id=instance_data.item_id,
@@ -69,36 +61,15 @@ class InstanceService:
         Raises:
             - HTTPException with status code 404 if the instance, project, or item is not found.
         """
-        # Ensure the instance exists
-        existing_instance = db.query(Instance).filter(Instance.id == instance_id).first()
-        if existing_instance is None:
+        instance = db.query(Instance).filter(Instance.id == instance_id).first()
+        if not instance:
             raise HTTPException(status_code=404, detail="Instance not found")
-
-        # Ensure the project and item exist
-        project = db.query(Project).filter(Project.id == instance_data.project_id).first()
-        item = db.query(Item).filter(Item.id == instance_data.item_id).first()
-        if project is None:
-            raise HTTPException(status_code=404, detail="Project not found")
-        if item is None:
-            raise HTTPException(status_code=404, detail="Item not found")
-
-        # Update the instance's attributes
-        existing_instance.project_id = instance_data.project_id
-        existing_instance.item_id = instance_data.item_id
-        existing_instance.position_x = instance_data.position_x
-        existing_instance.position_y = instance_data.position_y
-        existing_instance.position_z = instance_data.position_z
-        existing_instance.rotation_x = instance_data.rotation_x
-        existing_instance.rotation_y = instance_data.rotation_y
-        existing_instance.rotation_z = instance_data.rotation_z
-        existing_instance.scale_x = instance_data.scale_x
-        existing_instance.scale_y = instance_data.scale_y
-        existing_instance.scale_z = instance_data.scale_z
-
-        # Commit the changes to the database
+        ensure_project_or_item_exists(db, instance_data.project_id, instance_data.item_id)
+        for attr, value in (instance_data.items()):
+            setattr(instance, attr, value)
         db.commit()
-        db.refresh(existing_instance)
-        return existing_instance
+        db.refresh(instance)
+        return instance
 
     @staticmethod
     def get_instance(db: Session, instance_id: int):
@@ -155,3 +126,23 @@ class InstanceService:
         db.delete(instance)
         db.commit()
         return {"message": "Instance deleted successfully"}
+
+
+def ensure_project_or_item_exists(db: Session, project_id: int = None, item_id: int = None):
+    """
+    Ensures that either the project or item exists in the database.
+    Raises HTTPException (404) if neither exists.
+
+    Args:
+        db (Session): The database session.
+        project_id (int, optional): The ID of the project to check.
+        item_id (int, optional): The ID of the item to check.
+
+    Returns:
+        None: Raises an exception if neither exists.
+    """
+    project_exists = db.query(Project).filter(Project.id == project_id).first() if project_id else None
+    item_exists = db.query(Item).filter(Item.id == item_id).first() if item_id else None
+
+    if project_exists is None and item_exists is None:
+        raise HTTPException(status_code=404, detail="Neither Project nor Item found")

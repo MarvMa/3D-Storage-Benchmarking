@@ -1,6 +1,8 @@
 # app/storage_backends/minio_storage.py
 
 from io import BytesIO
+
+from fastapi import UploadFile
 from minio import Minio, S3Error
 from .base_interface import StorageInterface
 
@@ -19,9 +21,13 @@ class MinioStorage(StorageInterface):
         if not bucket:
             self.client.make_bucket(self.bucket_name)
 
-    def save_file(self, object_id: str, file: bytes) -> None:
-        data_stream = BytesIO(file)
-        data_len = len(file)
+    async def save_file(self, object_id: str, file: UploadFile) -> None:
+        if not isinstance(object_id, str):
+            object_id = str(object_id)
+
+        file_bytes = await file.read()
+        data_stream = BytesIO(file_bytes)
+        data_len = len(file_bytes)
         self.client.put_object(
             bucket_name=self.bucket_name,
             object_name=object_id,
@@ -30,7 +36,7 @@ class MinioStorage(StorageInterface):
             content_type="application/octet-stream"
         )
 
-    def load_file(self, object_id: str) -> bytes:
+    async def load_file(self, object_id: str) -> bytes:
         try:
             response = self.client.get_object(self.bucket_name, object_id)
             data = response.read()
@@ -38,9 +44,9 @@ class MinioStorage(StorageInterface):
             response.release_conn()
             return data
         except S3Error:
-            return None
+            return b""
 
-    def delete_file(self, object_id: str) -> None:
+    async def delete_file(self, object_id: str) -> None:
         try:
             self.client.remove_object(self.bucket_name, object_id)
         except S3Error:

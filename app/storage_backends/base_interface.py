@@ -1,15 +1,17 @@
 from abc import ABC, abstractmethod
 
+from fastapi import UploadFile
+
 
 class StorageInterface(ABC):
     @abstractmethod
-    def save_file(self, object_id: str, file: bytes) -> None:
+    async def save_file(self, object_id: str, file: UploadFile) -> None:
         pass
 
     @abstractmethod
-    def load_file(self, object_id: str) -> bytes:
+    async def load_file(self, object_id: str) -> bytes:
         pass
 
     @abstractmethod
-    def delete_file(self, object_id: str) -> None:
+    async def delete_file(self, object_id: str) -> None:
         pass

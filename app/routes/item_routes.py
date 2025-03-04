@@ -10,7 +10,7 @@ router = APIRouter()
 
 
 @router.post("/items/", response_model=ItemRead)
-def create_item(
+async def create_item(
         name: str = Form(...),
         description: str = Form(...),
         file: UploadFile = File(...),
@@ -30,11 +30,11 @@ def create_item(
     Returns:
         - The newly created item's details, including its ID.
     """
-    return ItemService.create_item(db, name, description, file)
+    return await ItemService.create_item(db, name, description, file)
 
 
 @router.put("/items/{item_id}", response_model=ItemRead)
-def update_item(
+async def update_item(
         item_id: int,
         name: str = Form(...),
         description: str = Form(...),
@@ -59,11 +59,11 @@ def update_item(
         - 404 HTTPException if the item is not found.
         - 400 HTTPException if file update fails.
     """
-    return ItemService.update_item(db, item_id, name, description, file)
+    return await ItemService.update_item(db, item_id, name, description, file)
 
 
 @router.get("/items/{item_id}", response_model=ItemRead)
-def read_item(item_id: int, db: Session = Depends(get_db)):
+async def read_item(item_id: int, db: Session = Depends(get_db)):
     """
     Retrieve item by ID.
 
@@ -79,11 +79,11 @@ def read_item(item_id: int, db: Session = Depends(get_db)):
     Raises:
         - 404 HTTPException if the item is not found.
     """
-    return ItemService.get_item(db, item_id)
+    return await ItemService.get_item(db, item_id)
 
 
 @router.get("/items/{item_id}/download", response_class=FileResponse)
-def download_item(item_id: int, db: Session = Depends(get_db)):
+async def download_item(item_id: int, db: Session = Depends(get_db)):
     """
     Download item file by ID.
 
@@ -99,12 +99,12 @@ def download_item(item_id: int, db: Session = Depends(get_db)):
     Raises:
         - 404 HTTPException if the item is not found or the file does not exist on the server.
     """
-    file_path = ItemService.download_item(db, item_id)
+    file_path = await ItemService.download_item(db, item_id)
     return FileResponse(path=file_path, filename=file_path.split("/")[-1], media_type='application/octet-stream')
 
 
 @router.delete("/items/{item_id}", status_code=204)
-def delete_item(item_id: int, db: Session = Depends(get_db)):
+async def delete_item(item_id: int, db: Session = Depends(get_db)):
     """
     Delete item by ID.
 
@@ -120,4 +120,4 @@ def delete_item(item_id: int, db: Session = Depends(get_db)):
     Raises:
         - 404 HTTPException if the item is not found.
     """
-    return ItemService.delete_item(db, item_id)
+    return await ItemService.delete_item(db, item_id)

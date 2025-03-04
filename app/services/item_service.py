@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.config import get_storage_backend
@@ -20,7 +20,7 @@ class ItemService:
     """
 
     @staticmethod
-    def create_item(db: Session, name: str, description: str, file):
+    async def create_item(db: Session, name: str, description: str, file: UploadFile):
         """
         Create a new item and upload its associated file.
 
@@ -42,18 +42,17 @@ class ItemService:
         file_location = f"{UPLOAD_DIRECTORY}/{file.filename}"
         new_item = Item(name=name, description=description, file_path=file_location)
 
-
-        storage_backend.save_file(new_item.id, file)
-
         db.add(new_item)
         db.commit()
         db.refresh(new_item)
+
+        await storage_backend.save_file(new_item.id, file)
 
         return new_item
 
     @staticmethod
     # TODO: Add updating mechanism for the file
-    def update_item(db: Session, item_id: int, name: str, description: str, file=None):
+    async def update_item(db: Session, item_id: int, name: str, description: str, file=None):
         """
         Update an existing item, including its name, description, and optionally its file.
 
@@ -102,7 +101,7 @@ class ItemService:
         return item
 
     @staticmethod
-    def get_item(db: Session, item_id: int):
+    async def get_item(db: Session, item_id: int):
         """
         Retrieve an item by its ID.
 
@@ -122,7 +121,7 @@ class ItemService:
         return item
 
     @staticmethod
-    def download_item(db: Session, item_id: int):
+    async def download_item(db: Session, item_id: int):
         """
         Retrieve the file associated with an item by its ID.
 
@@ -140,10 +139,10 @@ class ItemService:
         if item is None:
             raise HTTPException(status_code=404, detail="Item not found")
 
-        return storage_backend.load_file(item.id);
+        return await storage_backend.load_file(item.id);
 
     @staticmethod
-    def delete_item(db: Session, item_id: int):
+    async def delete_item(db: Session, item_id: int):
         """
         Delete an item by its ID, and remove the associated file from the server.
 
@@ -161,7 +160,7 @@ class ItemService:
         if item is None:
             raise HTTPException(status_code=404, detail="Item not found")
 
-        storage_backend.delete_file(item.id)
+        await storage_backend.delete_file(item.id)
         # Delete the item from the database
         db.delete(item)
         db.commit()
