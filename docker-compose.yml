@@ -88,19 +88,22 @@ services:
       "locust",
       "-f", "locustfile.py"
     ]
+  socat:
+    image: alpine/socat
+    container_name: socat
+    command: socat TCP-LISTEN:2375,reuseaddr,fork UNIX-CONNECT:/var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
   telegraf:
     image: telegraf:latest
     container_name: telegraf
-    user: root
-    ports:
-      - "9273:9273"
+    depends_on:
+      - socat
     environment:
       - HOST_PROC=/host/proc
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - ./telegraf.conf:/etc/telegraf/telegraf.conf
-    depends_on:
-      - prometheus
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
