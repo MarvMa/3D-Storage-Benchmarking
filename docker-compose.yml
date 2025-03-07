@@ -81,6 +81,7 @@ services:
       - web_file
     ports:
       - "8089:8089"
+      - "9645:9645"
     volumes:
       - .:/app
     working_dir: /app/benchmarks
@@ -91,19 +92,26 @@ services:
   socat:
     image: alpine/socat
     container_name: socat
-    command: socat TCP-LISTEN:2375,reuseaddr,fork UNIX-CONNECT:/var/run/docker.sock
+    command: [ "-d", "-d", "TCP-LISTEN:2375,reuseaddr,fork", "UNIX-CONNECT:/var/run/docker.sock" ]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: always
+    networks:
+      bench_network:
+
   telegraf:
     image: telegraf:latest
     container_name: telegraf
+    ports:
+      - "9273:9273"
     depends_on:
       - socat
     environment:
       - HOST_PROC=/host/proc
     volumes:
       - ./telegraf.conf:/etc/telegraf/telegraf.conf
+    networks:
+      bench_network:
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -113,6 +121,8 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "9090:9090"  # Prometheus web UI
+    networks:
+      bench_network:
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -127,6 +137,10 @@ services:
     volumes:
       - grafana-storage:/var/lib/grafana
       - ./grafana-datasource-config.yaml:/etc/grafana/provisioning/datasources/datasource.yaml
+    networks:
+      bench_network:
 volumes:
   minio_data:
   grafana-storage:
+networks:
+  bench_network:
