@@ -4,19 +4,13 @@
       {
         "builtIn": 1,
         "datasource": {
-          "type": "datasource",
-          "uid": "grafana"
+          "type": "grafana",
+          "uid": "-- Grafana --"
         },
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
-        "target": {
-          "limit": 100,
-          "matchAny": false,
-          "tags": [],
-          "type": "dashboard"
-        },
         "type": "dashboard"
       }
     ]
@@ -24,15 +18,14 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 2,
+  "id": 5,
   "links": [],
   "panels": [
     {
       "datasource": {
-        "type": "Prometheus",
-        "uid": "prometheus-data-source"
+        "type": "prometheus",
+        "uid": "deez96wxyw9vkb"
       },
-      "description": "Gesamtzahl der Container mit dem Namen *web_**",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -52,29 +45,13 @@
               }
             ]
           },
-          "unit": "none"
+          "unit": "decgbytes"
         },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "{__name__=\"docker_container_status_pid\", com_docker_compose_config_hash=\"74c0dab902821b3c6579cd3dfe1c7eb2cdb92b79a1ef055889d7342d59e4bf26\", com_docker_compose_container_number=\"1\", com_docker_compose_image=\"sha256:415aef95178dafe87ec0b3724b189d5412c3205692239f460ca57c64df8f30a6\", com_docker_compose_oneoff=\"False\", com_docker_compose_project=\"3d-storage-benchmarking\", com_docker_compose_project_config_files=\"/Users/marvinmeitzner/PycharmProjects/3D-Storage-Benchmarking/docker-compose.yml\", com_docker_compose_project_working_dir=\"/Users/marvinmeitzner/PycharmProjects/3D-Storage-Benchmarking\", com_docker_compose_service=\"telegraf\", com_docker_compose_version=\"2.32.4\", container_id=\"8e8b6c564d2100cb5475959d42e0bfbd285cb289f5bec5bc682012fa8b122f06\", container_image=\"telegraf\", container_name=\"telegraf\", container_status=\"running\", container_version=\"latest\", desktop_docker_io_binds_0_Source=\"/Users/marvinmeitzner/PycharmProjects/3D-Storage-Benchmarking/telegraf.conf\", desktop_docker_io_binds_0_SourceKind=\"hostFile\", desktop_docker_io_binds_0_Target=\"/etc/telegraf/telegraf.conf\", engine_host=\"docker-desktop\", host=\"8e8b6c564d21\", instance=\"telegraf:9273\", job=\"telegraf\", server_version=\"27.5.1\"}"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": []
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 5,
+        "h": 8,
+        "w": 12,
         "x": 0,
         "y": 0
       },
@@ -82,7 +59,7 @@
       "options": {
         "minVizHeight": 75,
         "minVizWidth": 75,
-        "orientation": "horizontal",
+        "orientation": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -98,31 +75,208 @@
       "targets": [
         {
           "datasource": {
-            "type": "Prometheus",
-            "uid": "prometheus-data-source"
+            "type": "prometheus",
+            "uid": "deez96wxyw9vkb"
           },
           "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "count(docker_container_status_pid{com_docker_compose_service=~\"web_.+\"})",
+          "expr": "docker_container_mem_usage{com_docker_compose_service=~\"web_.+\"} / 1000000000",
           "fullMetaSearch": false,
-          "hide": false,
           "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "{{com_docker_compose_service}}",
           "range": true,
-          "refId": "B",
+          "refId": "A",
           "useBackend": false
         }
       ],
-      "title": "Benchmark Container-Anzahl",
+      "title": "Memory Usage per Docker-Container",
       "type": "gauge"
     },
     {
       "datasource": {
-        "type": "Prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "type": "prometheus",
+        "uid": "deez96wxyw9vkb"
       },
-      "description": "Memory-Auslastung der Container mit dem Namen *Arpas_backend_*",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.5.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "deez96wxyw9vkb"
+          },
+          "editorMode": "code",
+          "expr": "docker_container_cpu_usage_percent{com_docker_compose_service=~\"web_.+\"}",
+          "legendFormat": "{{com_docker_compose_service}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "CPU Usage in percent",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deez96wxyw9vkb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "decgbytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
+      },
+      "pluginVersion": "11.5.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "deez96wxyw9vkb"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "docker_container_mem_usage{com_docker_compose_service!~\"web_.+\"} / 1000000000",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "{{com_docker_compose_service}}",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Memory Usage per Docker-Container",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deez96wxyw9vkb"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -174,134 +328,15 @@
                 "value": 80
               }
             ]
-          },
-          "unit": "percent"
+          }
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 12,
+        "h": 8,
         "w": 12,
         "x": 12,
-        "y": 0
-      },
-      "id": 4,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "11.5.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "Prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "sum(mem{name=~\"web_.+\"}) by (name) / sum(container_spec_memory_limit_bytes{name=~\"Arpas_backend_.+\"}) by (name) * 100",
-          "format": "time_series",
-          "hide": false,
-          "legendFormat": "{{name}}",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "Prometheus",
-            "uid": "prometheus-data-source"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "docker_container_mem_usage_percent{com_docker_compose_service=~\"web_.+\"}",
-          "fullMetaSearch": false,
-          "hide": false,
-          "includeNullMetadata": true,
-          "instant": false,
-          "legendFormat": "{{com_docker_compose_service}}",
-          "range": true,
-          "refId": "B",
-          "useBackend": false
-        }
-      ],
-      "title": "Memory-Auslastung pro Container",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "Prometheus",
-        "uid": "prometheus-data-source"
-      },
-      "description": "CPU-Auslastung der Benchmark-Container",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "Usage in %",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.5,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "smooth",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 11,
-        "w": 12,
-        "x": 0,
-        "y": 10
+        "y": 8
       },
       "id": 3,
       "options": {
@@ -311,9 +346,6 @@
           "placement": "bottom",
           "showLegend": true
         },
-        "timezone": [
-          "browser"
-        ],
         "tooltip": {
           "hideZeros": false,
           "mode": "single",
@@ -324,31 +356,21 @@
       "targets": [
         {
           "datasource": {
-            "type": "Prometheus",
-            "uid": "PBFA97CFB890B79C"
+            "type": "prometheus",
+            "uid": "deez96wxyw9vkb"
           },
-          "editorMode": "builder",
-          "expr": "docker_container_cpu_usage_percent{com_docker_compose_service=~\"web_.+\"}",
-          "format": "time_series",
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "docker_container_cpu_usage_percent{com_docker_compose_service!~\"web_.+\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
           "legendFormat": "{{com_docker_compose_service}}",
           "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "Prometheus",
-            "uid": "prometheus-data-source"
-          },
-          "editorMode": "code",
-          "expr": "",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "B"
+          "refId": "A",
+          "useBackend": false
         }
       ],
-      "title": "CPU-Auslastung pro Container",
+      "title": "Panel Title",
       "type": "timeseries"
     }
   ],
@@ -360,13 +382,13 @@
     "list": []
   },
   "time": {
-    "from": "2025-03-05T23:23:10.058Z",
-    "to": "2025-03-05T23:52:11.595Z"
+    "from": "2025-03-06T02:37:29.639Z",
+    "to": "2025-03-06T02:38:26.764Z"
   },
   "timepicker": {},
-  "timezone": "",
-  "title": "Docker Monitoring - Arpas Backend",
-  "uid": "beeyxx5z28cn4b",
-  "version": 7,
+  "timezone": "browser",
+  "title": "Benchmark-Monitoring",
+  "uid": "aeez9peggzwn44",
+  "version": 3,
   "weekStart": ""
 }

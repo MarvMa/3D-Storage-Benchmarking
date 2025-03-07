@@ -48,6 +48,8 @@ services:
       - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
       - DATABASE_URL=${DATABASE_URL}
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    depends_on:
+      - minio
     volumes:
       - .:/app
       - ./uploaded_files:/app/uploaded_files
@@ -79,6 +81,8 @@ services:
       - "container_name=locust_load_tester"
     depends_on:
       - web_file
+      - web_db
+      - web_minio
     ports:
       - "8089:8089"
       - "9645:9645"
@@ -98,7 +102,6 @@ services:
     restart: always
     networks:
       bench_network:
-
   telegraf:
     image: telegraf:latest
     container_name: telegraf
@@ -115,12 +118,21 @@ services:
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:9090/-/ready | grep -q 'Prometheus'" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     labels:
       - "container_name=prometheus"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "9090:9090"  # Prometheus web UI
+    depends_on:
+      - telegraf
+      - locust
+      - socat
     networks:
       bench_network:
   grafana:
@@ -133,10 +145,13 @@ services:
     ports:
       - "3000:3000"  # Grafana UI is available on port 3000
     depends_on:
-      - prometheus
+      prometheus:
+        condition: service_healthy
     volumes:
       - grafana-storage:/var/lib/grafana
-      - ./grafana-datasource-config.yaml:/etc/grafana/provisioning/datasources/datasource.yaml
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana-dashboard-config.yaml:/etc/grafana/provisioning/dashboards/dashboard.yaml
+      - ./grafana/provisioning/datasources/grafana-datasource-config.yaml:/etc/grafana/provisioning/datasources/datasource.yaml
     networks:
       bench_network:
 volumes:
