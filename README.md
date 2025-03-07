@@ -8,12 +8,8 @@ http://localhost:9273/metrics
 http://localhost:8089
 ### Grafana
 http://localhost:3000
-
-Deactivate virtual environment
-
-```bash
-deactivate
-```
+### Prometheus
+Prometheus Targets: http://localhost:9090/targets
 
 ## Documentation
 
