@@ -1,6 +1,10 @@
 # ARPAS-backend
 
 ## ARPAS-Backend Docker-Commands
+### Start Project
+
+docker-compose down -v && docker-compose up -d
+
 
 ### Telegraf
 http://localhost:9273/metrics

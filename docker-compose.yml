@@ -14,6 +14,8 @@ services:
     volumes:
       - .:/app
       - ./uploaded_files:/app/uploaded_files
+    networks:
+      bench_network:
   # Database (BLOB) storage
   web_db:
     build: .
@@ -30,6 +32,8 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
       - .:/app
+    networks:
+      bench_network:
   # FastAPI service
   web_minio:
     build: .
@@ -53,6 +57,8 @@ services:
     volumes:
       - .:/app
       - ./uploaded_files:/app/uploaded_files
+    networks:
+      bench_network:
 
   # MinIO service
   minio:
@@ -70,13 +76,8 @@ services:
     volumes:
       - minio_data:/data
   locust:
-    build:
-      context: .
-      dockerfile: benchmarks/Dockerfile.locust
+    image: locustio/locust:2.33.0
     container_name: locust_load_tester
-    environment:
-      - LOCUST_EXPORTER_ENABLED=1
-      - LOCUST_EXPORTER_PORT=9645
     labels:
       - "container_name=locust_load_tester"
     depends_on:
@@ -84,15 +85,25 @@ services:
       - web_db
       - web_minio
     ports:
-      - "8089:8089"
-      - "9645:9645"
+      - "8089:8089" # Locust Web UI
     volumes:
       - .:/app
     working_dir: /app/benchmarks
     command: [
-      "locust",
       "-f", "locustfile.py"
     ]
+    networks:
+      bench_network:
+  locust-metrics-exporter:
+    image: containersol/locust_exporter
+    ports:
+      - "9646:9646"
+    environment:
+      - LOCUST_EXPORTER_URI=http://locust:8089
+    depends_on:
+      - locust
+    networks:
+      bench_network:
   socat:
     image: alpine/socat
     container_name: socat
@@ -123,8 +134,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    labels:
-      - "container_name=prometheus"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
@@ -143,7 +152,7 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin  # default credentials (admin/admin)
     ports:
-      - "3000:3000"  # Grafana UI is available on port 3000
+      - "3000:3000"  # Grafana UI
     depends_on:
       prometheus:
         condition: service_healthy
