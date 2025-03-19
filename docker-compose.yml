@@ -75,6 +75,27 @@ services:
       - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
     volumes:
       - minio_data:/data
+    networks:
+      bench_network:
+  # PostgreSQL
+  postgres:
+    image: postgres:15
+    container_name: arpas_postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=arpas_user
+      - POSTGRES_PASSWORD=securepassword
+      - POSTGRES_DB=arpas_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - bench_network
+
+  volumes:
+    pgdata:
+
   locust:
     image: locustio/locust:2.33.0
     container_name: locust_load_tester
@@ -140,7 +161,7 @@ services:
       - "9090:9090"  # Prometheus web UI
     depends_on:
       - telegraf
-      - locust
+      - locust-metrics-exporter
       - socat
     networks:
       bench_network:
@@ -163,6 +184,7 @@ services:
       - ./grafana/provisioning/datasources/grafana-datasource-config.yaml:/etc/grafana/provisioning/datasources/datasource.yaml
     networks:
       bench_network:
+    entrypoint: ["sh", "-c", "sleep 10 && /run.sh"]
 volumes:
   minio_data:
   grafana-storage:
