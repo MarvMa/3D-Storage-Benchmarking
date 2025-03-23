@@ -77,9 +77,8 @@ services:
       - minio_data:/data
     networks:
       bench_network:
-  # PostgreSQL
   postgres:
-    image: postgres:15
+    image: postgres:17
     container_name: arpas_postgres
     restart: always
     ports:
@@ -92,9 +91,6 @@ services:
       - pgdata:/var/lib/postgresql/data
     networks:
       - bench_network
-
-  volumes:
-    pgdata:
 
   locust:
     image: locustio/locust:2.33.0
@@ -188,5 +184,6 @@ services:
 volumes:
   minio_data:
   grafana-storage:
+  pgdata:
 networks:
   bench_network:

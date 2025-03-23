@@ -11,3 +11,6 @@ minio
 locust
 pygltflib
 starlette
+requests
+matplotlib
+pandas
