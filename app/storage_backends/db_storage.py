@@ -1,58 +1,39 @@
-from fastapi import UploadFile, HTTPException
-from sqlalchemy import create_engine, Column, String, LargeBinary
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
+
+from app.models import Item
 
 from .base_interface import StorageInterface
 
-Base = declarative_base()
-
-
-class ThreeDObject(Base):
-    __tablename__ = "three_d_objects"
-    object_id = Column(String, primary_key=True)
-    file_blob = Column(LargeBinary, nullable=False)
-
 
 class DBStorage(StorageInterface):
-    def __init__(self, database_url: str):
-        self.database_url = database_url
-        self.engine = create_engine(self.database_url, echo=False)
-        Base.metadata.create_all(self.engine)
-        self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
-
-    async def save_file(self, object_id: str, file: UploadFile) -> None:
-        db_session = self.SessionLocal()
+    async def save_file(self, db: Session, name: str, data: bytes) -> Item:
         try:
-            existing_obj = db_session.query(ThreeDObject).filter_by(object_id=object_id).first()
-            if existing_obj:
-                existing_obj.file_blob = file
-            else:
-                file_bytes = await file.read()
-                new_obj = ThreeDObject(object_id=object_id, file_blob=file_bytes)
-                db_session.add(new_obj)
+            item = Item(name=name, filename=name, content=data, storage_type='db')
+            db.add(item)
+            db.commit()
+            db.refresh(item)
+            return item
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
 
-            db_session.commit()
-        finally:
-            db_session.close()
-
-    async def load_file(self, object_id: str) -> bytes:
-        db_session = self.SessionLocal()
-        obj = None
+    async def load_file(self, db: Session, item_id: int) -> bytes:
         try:
-            obj = db_session.query(ThreeDObject).filter_by(object_id=object_id).first()
-            return obj.file_blob
-        finally:
-            db_session.close()
-            if obj is None:
-                raise HTTPException(status_code=404, detail="File not found")
+            item = db.query(Item).get(item_id)
+            if item is None:
+                raise HTTPException(status_code=404, detail="Item not found")
+            return item.content
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
-    async def delete_file(self, object_id: str) -> None:
-        db_session = self.SessionLocal()
+    async def delete_file(self, db: Session, item_id: int) -> None:
         try:
-            obj = db_session.query(ThreeDObject).filter_by(object_id=object_id).first()
-            if obj:
-                db_session.delete(obj)
-                db_session.commit()
-        finally:
-            db_session.close()
+            item = db.query(Item).get(item_id)
+            if item is None:
+                raise HTTPException(status_code=404, detail="Item not found")
+            db.delete(item)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=str(e))

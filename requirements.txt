@@ -14,3 +14,5 @@ starlette
 requests
 matplotlib
 pandas
+psycopg2-binary
+

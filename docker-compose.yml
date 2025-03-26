@@ -13,10 +13,8 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
       - .:/app
-      - ./uploaded_files:/app/uploaded_files
     networks:
       bench_network:
-  # Database (BLOB) storage
   web_db:
     build: .
     container_name: arpas_backend_db
@@ -28,8 +26,11 @@ services:
       - .env
     environment:
       - STORAGE_BACKEND=db
-      - DATABASE_URL=sqlite:///./arpas-dev.db
+      - DATABASE_URL=postgresql://arpas_user:securepassword@postgres:5432/arpas_db
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - .:/app
     networks:
@@ -91,6 +92,11 @@ services:
       - pgdata:/var/lib/postgresql/data
     networks:
       - bench_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U arpas_user -d arpas_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   locust:
     image: locustio/locust:2.33.0
@@ -109,6 +115,11 @@ services:
     command: [
       "-f", "locustfile.py"
     ]
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8089" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       bench_network:
   locust-metrics-exporter:
@@ -119,6 +130,11 @@ services:
       - LOCUST_EXPORTER_URI=http://locust:8089
     depends_on:
       - locust
+    healthcheck:
+      test: [ "CMD-SHELL", "pgrep locust_exporter" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       bench_network:
   socat:
@@ -141,6 +157,11 @@ services:
       - HOST_PROC=/host/proc
     volumes:
       - ./telegraf.conf:/etc/telegraf/telegraf.conf
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9273/metrics" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       bench_network:
   prometheus:
@@ -156,9 +177,10 @@ services:
     ports:
       - "9090:9090"  # Prometheus web UI
     depends_on:
-      - telegraf
+      - locust
       - locust-metrics-exporter
-      - socat
+      - telegraf
+    entrypoint: [ "sh", "-c", "sleep 20 && /bin/prometheus --config.file=/etc/prometheus/prometheus.yml" ]
     networks:
       bench_network:
   grafana:
@@ -180,7 +202,7 @@ services:
       - ./grafana/provisioning/datasources/grafana-datasource-config.yaml:/etc/grafana/provisioning/datasources/datasource.yaml
     networks:
       bench_network:
-    entrypoint: ["sh", "-c", "sleep 10 && /run.sh"]
+    entrypoint: [ "sh", "-c", "sleep 10 && /run.sh" ]
 volumes:
   minio_data:
   grafana-storage:

@@ -143,3 +143,5 @@ cython_debug/
 uploaded_models/  # Ignore folder storing uploaded models
 
 uploaded_files/
+
+benchmarks/benchmark_results/

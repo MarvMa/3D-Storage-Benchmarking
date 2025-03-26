@@ -12,10 +12,26 @@ BENCHMARKS = [
 LOCUST_API = "http://localhost:8089"  # falls lokal, ggf. anpassen bei Container-Nutzung
 USERS = 50
 SPAWN_RATE = 5
-RUNTIME = 20  #300 Sekunden (z.B. 5 Minuten Benchmark)
-PAUSE = 10  # Sekunden zwischen Benchmarks
+RUNTIME = 60  #300 Sekunden (z.B. 5 Minuten Benchmark)
+PAUSE = 20  # Sekunden zwischen Benchmarks
 
 results = []
+
+def wait_until_spawn_complete(timeout=60):
+    import time
+    start_wait = time.time()
+    while time.time() - start_wait < timeout:
+        try:
+            r = requests.get(f"{LOCUST_API}/stats/requests")
+            r.raise_for_status()
+            data = r.json()
+            if data.get("state") == "running":
+                print("[INFO] Locust hat die Spawnphase beendet (state=running).")
+                return
+        except Exception as e:
+            print(f"[WARN] Warte auf Spawnabschluss: {e}")
+        time.sleep(1)
+    raise RuntimeError("Timeout: Locust hat den Zustand 'running' nicht erreicht.")
 
 
 def start_benchmark(target):
@@ -27,6 +43,9 @@ def start_benchmark(target):
     })
     if r.status_code != 200:
         raise RuntimeError(f"Fehler beim Starten von {target['name']}: {r.text}")
+
+    wait_until_spawn_complete()
+
     return time.time()
 
 
@@ -43,8 +62,8 @@ for benchmark in BENCHMARKS:
     end = stop_benchmark()
     results.append({
         "service": benchmark["name"],
-        "start": int(start),
-        "end": int(end)
+        "start": start,
+        "end": end
     })
     print(f"[{benchmark['name']}] Benchmark abgeschlossen. Warte {PAUSE}s...\n")
     time.sleep(PAUSE)

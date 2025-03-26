@@ -1,10 +1,11 @@
-# app/storage_backends/minio_storage.py
-
 from io import BytesIO
 
-from fastapi import UploadFile
-from minio import Minio, S3Error
+from fastapi import HTTPException
+from minio import Minio
+from sqlalchemy.orm import Session
+
 from .base_interface import StorageInterface
+from app.models import Item
 
 
 class MinioStorage(StorageInterface):
@@ -18,40 +19,36 @@ class MinioStorage(StorageInterface):
         self.bucket_name = bucket_name
 
         bucket = self.client.bucket_exists(self.bucket_name)
-        if not self.client.bucket_exists(self.bucket_name):
+        if not bucket:
             self.client.make_bucket(self.bucket_name)
 
-    async def save_file(self, object_id: str, file: UploadFile) -> None:
-        if not isinstance(object_id, str):
-            object_id = str(object_id)
-
-        file_bytes = await file.read()
-        data_stream = BytesIO(file_bytes)
-        data_len = len(file_bytes)
-        self.client.put_object(
-            bucket_name=self.bucket_name,
-            object_name=object_id,
-            data=data_stream,
-            length=data_len,
-            content_type="application/octet-stream"
-        )
-
-    async def load_file(self, object_id: str) -> bytes:
-        if not isinstance(object_id, str):
-            object_id = str(object_id)
+    async def save_file(self, db: Session, name: str, data: bytes) -> Item:
         try:
-            response = self.client.get_object(self.bucket_name, object_id)
-            data = response.read()
-            response.close()
-            response.release_conn()
-            return data
-        except S3Error:
-            return b""
+            file = BytesIO(data)
+            self.client.put_object(self.bucket_name, name, file, length=-1, part_size=10 * 1024 * 1024)
+            item = Item(name=name, filename=name, path_or_key=name, storage_type='minio')
+            db.add(item)
+            db.commit()
+            db.refresh(item)
+            return item
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
 
-    async def delete_file(self, object_id: str) -> None:
-        if not isinstance(object_id, str):
-            object_id = str(object_id)
+    async def load_file(self, db: Session, item_id: int) -> bytes:
         try:
-            self.client.remove_object(self.bucket_name, object_id)
-        except S3Error:
-            pass  # Handle logging or error re-throw as needed
+            item = db.query(Item).get(item_id)
+            response = self.client.get_object(self.bucket_name, item.path_or_key)
+            return response.read()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def delete_file(self, db: Session, item_id: int) -> None:
+        try:
+            item = db.query(Item).get(item_id)
+            self.client.remove_object(self.bucket_name, item.path_or_key)
+            db.delete(item)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=str(e))

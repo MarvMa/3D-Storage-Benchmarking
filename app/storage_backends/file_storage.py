@@ -1,29 +1,47 @@
 import os
 
-from fastapi import UploadFile
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
 from .base_interface import StorageInterface
+from ..models import Item
+
+UPLOAD_DIRECTORY = "/tmp/3d_objects/"
 
 
 class FileStorage(StorageInterface):
-    def __init__(self, folder="3D-Objects"):
-        self.folder = folder
-        os.makedirs(self.folder, exist_ok=True)
+    def __init__(self):
+        os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 
-    async def save_file(self, object_id: str, file: UploadFile) -> None:
-        destination = os.path.join(self.folder, str(object_id))
-        content = await file.read() if hasattr(file, "read") and callable(file.read) else file.read()
-        with open(destination, "wb") as dst:
-            dst.write(content)
+    async def save_file(self, db: Session, name: str, data: bytes) -> Item:
+        try:
 
-    async def load_file(self, object_id):
-        path = os.path.join(self.folder, str(object_id))
-        if not os.path.exists(path):
-            return None
-        with open(path, "rb") as f:
-            return f.read()
+            path = os.path.join(UPLOAD_DIRECTORY, name)
+            with open(path, "wb") as f:
+                f.write(data)
+            item = Item(name=name, filename=name, path_or_key=path, storage_type='file')
+            db.add(item)
+            db.commit()
+            db.refresh(item)
+            return item
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
 
-    async def delete_file(self, object_id):
-        path = os.path.join(self.folder, str(object_id))
-        if os.path.exists(path):
-            os.remove(path)
+    async def load_file(self, db: Session, item_id: int) -> bytes:
+        try:
+            item = db.query(Item).get(item_id)
+            with open(item.path_or_key, "rb") as f:
+                return f.read()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def delete_file(self, db: Session, item_id: int) -> None:
+        try:
+            item = db.query(Item).get(item_id)
+            os.remove(item.path_or_key)
+            db.delete(item)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=str(e))

@@ -69,7 +69,6 @@ class FastAPIUser(HttpUser):
 
     @task(1)
     def update_and_delete_file(self):
-        # For updates, we'll use the small file always
         size_category = "small"
         file_path = FILE_PATHS[size_category]
         with open(file_path, "rb") as f:

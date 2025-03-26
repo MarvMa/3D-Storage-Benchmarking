@@ -7,11 +7,9 @@ from app.storage_backends.minio_storage import MinioStorage
 def get_storage_backend():
     backend = os.getenv("STORAGE_BACKEND", "file")
     if backend == "file":
-        folder = os.getenv("STORAGE_FOLDER", "uploaded_files")
-        return FileStorage(folder)
+        return FileStorage()
     elif backend == "db":
-        db_path = os.getenv("DATABASE_URL", "sqlite:///./arpas-dev.db")
-        return DBStorage(db_path)
+        return DBStorage()
     elif backend == "minio":
         endpoint = os.getenv("MINIO_ENDPOINT", "minio:9000")
         access_key = os.getenv("MINIO_ACCESS_KEY", "minio")
