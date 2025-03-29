@@ -15,4 +15,5 @@ requests
 matplotlib
 pandas
 psycopg2-binary
+docker
 

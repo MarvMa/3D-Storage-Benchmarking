@@ -26,4 +26,7 @@ Locust
 http://web_file:8000
 
 forward docker.sock to tcp
-socat TCP-LISTEN:2375,reuseaddr,fork UNIX-CONNECT:/var/run/docker.sock
+socat TCP-LISTEN:2375,reuseaddr, fork UNIX-CONNECT:/var/run/docker.sock
+
+
+https://github.com/locustio/locust/issues/2849

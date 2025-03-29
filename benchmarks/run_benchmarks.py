@@ -9,7 +9,7 @@ BENCHMARKS = [
     {"name": "web_db", "host": "http://web_db:8000"},
 ]
 
-LOCUST_API = "http://localhost:8089"  # falls lokal, ggf. anpassen bei Container-Nutzung
+LOCUST_API = "http://localhost:8089"
 USERS = 50
 SPAWN_RATE = 5
 RUNTIME = 60  #300 Sekunden (z.B. 5 Minuten Benchmark)
