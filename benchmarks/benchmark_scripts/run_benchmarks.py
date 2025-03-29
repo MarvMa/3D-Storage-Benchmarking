@@ -22,10 +22,10 @@ BENCHMARKS = [
 LOCUST_API = "http://localhost:8089"
 PROMETHEUS_API = "http://localhost:9090/api/v1"
 
-USERS = 20
-SPAWN_RATE = 5
-RUNTIME = 60  # 60 seconds per benchmark
-PAUSE = 20  # Cooldown between benchmarks
+USERS = 200
+SPAWN_RATE = 10
+RUNTIME = 600  # 60 seconds per benchmark
+PAUSE = 60  # Cooldown between benchmarks
 
 client = docker.from_env()
 
@@ -43,7 +43,6 @@ def start_benchmark(host, file_size):
 
 
 def stop_benchmark():
-    """Stoppt den Benchmark und gibt die Endzeit zurück."""
     requests.get(f"{LOCUST_API}/stop")
     return time.time()
 
