@@ -1,12 +1,215 @@
-version: '3.8'
-
 services:
-  web:
+  web_file:
     build: .
+    container_name: arpas_backend_file
+    labels:
+      - "container_name=file"
     ports:
-      - "8000:8000"
+      - "8001:8000"
+    env_file:
+      - .env
+    environment:
+      - STORAGE_BACKEND=file
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
       - .:/app
+    networks:
+      bench_network:
+  web_db:
+    build: .
+    container_name: arpas_backend_db
+    labels:
+      - "container_name=db"
+    ports:
+      - "8002:8000"
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=sqlite:///app.db
+      - STORAGE_BACKEND=db
+      - DATABASE_URL=postgresql://arpas_user:securepassword@postgres:5432/arpas_db
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    networks:
+      bench_network:
+  # FastAPI service
+  web_minio:
+    build: .
+    container_name: arpas_backend_minio
+    labels:
+      - "container_name=minio"
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - STORAGE_BACKEND=minio
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
+      - DATABASE_URL=${DATABASE_URL}
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    depends_on:
+      - minio
+    volumes:
+      - .:/app
+      - ./uploaded_files:/app/uploaded_files
+    networks:
+      bench_network:
+
+  # MinIO service
+  minio:
+    image: minio/minio:latest
+    container_name: minio_arpas_storage
+    labels:
+      - "container_name=minio-storage"
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"  # RESTful API Port
+      - "9001:9001"  # MinIO browser console
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    networks:
+      bench_network:
+  postgres:
+    image: postgres:17
+    container_name: arpas_postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=arpas_user
+      - POSTGRES_PASSWORD=securepassword
+      - POSTGRES_DB=arpas_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - bench_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U arpas_user -d arpas_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  locust:
+    image: locustio/locust:2.33.0
+    container_name: locust_load_tester
+    labels:
+      - "container_name=locust_load_tester"
+    depends_on:
+      - web_file
+      - web_db
+      - web_minio
+    environment:
+      - FILE_SIZE=${FILE_SIZE:-small}
+      - STORAGE_BACKEND=${STORAGE_BACKEND:-file}
+    ports:
+      - "8089:8089" # Locust Web UI
+    volumes:
+      - .:/app
+    working_dir: /app/benchmarks
+    command: [
+      "-f",
+      "locustfile.py"
+    ]
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8089" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      bench_network:
+  locust-metrics-exporter:
+    image: containersol/locust_exporter
+    ports:
+      - "9646:9646"
+    environment:
+      - LOCUST_EXPORTER_URI=http://locust:8089
+    depends_on:
+      - locust
+    healthcheck:
+      test: [ "CMD-SHELL", "pgrep locust_exporter" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      bench_network:
+  socat:
+    image: alpine/socat
+    container_name: socat
+    command: [ "-d", "-d", "TCP-LISTEN:2375,reuseaddr,fork", "UNIX-CONNECT:/var/run/docker.sock" ]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
+    networks:
+      bench_network:
+  telegraf:
+    image: telegraf:latest
+    container_name: telegraf
+    ports:
+      - "9273:9273"
+    depends_on:
+      - socat
+    environment:
+      - HOST_PROC=/host/proc
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9273/metrics" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      bench_network:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:9090/-/ready | grep -q 'Prometheus'" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"  # Prometheus web UI
+    depends_on:
+      - locust
+      - locust-metrics-exporter
+      - telegraf
+    entrypoint: [ "sh", "-c", "sleep 20 && /bin/prometheus --config.file=/etc/prometheus/prometheus.yml" ]
+    networks:
+      bench_network:
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    labels:
+      - "container_name=grafana"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin  # default credentials (admin/admin)
+    ports:
+      - "3000:3000"  # Grafana UI
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana-dashboard-config.yaml:/etc/grafana/provisioning/dashboards/dashboard.yaml
+      - ./grafana/provisioning/datasources/grafana-datasource-config.yaml:/etc/grafana/provisioning/datasources/datasource.yaml
+    networks:
+      bench_network:
+    entrypoint: [ "sh", "-c", "sleep 10 && /run.sh" ]
+volumes:
+  minio_data:
+  grafana-storage:
+  pgdata:
+networks:
+  bench_network:

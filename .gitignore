@@ -141,4 +141,7 @@ cython_debug/
 
 # Additional project-specific files
 uploaded_models/  # Ignore folder storing uploaded models
-example_items/    # Ignore example items folder if it contains temporary data
+
+uploaded_files/
+
+benchmarks/benchmark_results/

@@ -7,4 +7,13 @@ python-multipart
 qrcode[pil]
 pytest
 pytest-cov
+minio
+locust
+pygltflib
+starlette
+requests
+matplotlib
+pandas
+psycopg2-binary
+docker
 

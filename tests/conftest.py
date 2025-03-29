@@ -8,7 +8,7 @@ from app.models import Base, get_db
 
 # Shared Test Database Configuration
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -63,4 +63,3 @@ def client_with_db(setup_database):
 
     # Clear the overrides after tests are done
     app.dependency_overrides.clear()
-
