@@ -15,7 +15,7 @@ class FastAPIUser(HttpUser):
 
     def on_start(self):
 
-        size_tags = self.environment.parsed_options.tags  # kann str oder Set sein
+        size_tags = self.environment.parsed_options.tags
         print("TAGS: ", self.environment.parsed_options.tags)
         if isinstance(size_tags, (set, list)):
             file_size = list(size_tags)[0]
@@ -39,21 +39,14 @@ class FastAPIUser(HttpUser):
     @tag("small")
     @task(1)
     def download_small_file(self):
-        if self.uploaded_id and "small" in self.environment.parsed_options.tags:
-            self.client.get(f"/items/{self.uploaded_id}/download")
+        self.client.get(f"/items/{self.uploaded_id}/download")
 
     @tag("medium")
     @task(1)
     def download_medium_file(self):
-        if self.uploaded_id and "medium" in self.environment.parsed_options.tags:
-            self.client.get(f"/items/{self.uploaded_id}/download")
+        self.client.get(f"/items/{self.uploaded_id}/download")
 
     @tag("large")
     @task(1)
     def download_large_file(self):
-        if self.uploaded_id and "large" in self.environment.parsed_options.tags:
-            self.client.get(f"/items/{self.uploaded_id}/download")
-
-    def on_stop(self):
-        if self.uploaded_id:
-            self.client.delete(f"/items/{self.uploaded_id}")
+        self.client.get(f"/items/{self.uploaded_id}/download")

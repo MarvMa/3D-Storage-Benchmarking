@@ -22,10 +22,10 @@ BENCHMARKS = [
 LOCUST_API = "http://localhost:8089"
 PROMETHEUS_API = "http://localhost:9090/api/v1"
 
-USERS = 20
+USERS = 50
 SPAWN_RATE = 5
-RUNTIME = 60  # 60 seconds per benchmark
-PAUSE = 20  # Cooldown between benchmarks
+RUNTIME = 600  # 60 seconds per benchmark
+PAUSE = 60  # Cooldown between benchmarks
 
 client = docker.from_env()
 

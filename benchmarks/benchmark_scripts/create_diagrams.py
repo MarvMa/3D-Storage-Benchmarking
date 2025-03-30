@@ -1,81 +1,66 @@
-import requests
-import matplotlib.pyplot as plt
 import json
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
 
-PROM_URL = "http://localhost:9090/api/v1"
-CONTAINERS = {
-    "web_file": "file",
-    "web_minio": "minio",
-    "web_db": "db"
+with open('benchmark_results.json') as f:
+    data = json.load(f)
+
+df = pd.DataFrame(data)
+
+for metric in ['latency', 'cpu_usage', 'memory_usage', 'io_read', 'io_write']:
+    df[metric] = df[metric].apply(
+        lambda x: np.mean(x) if isinstance(x, list) and len(x) > 0 else 0
+    )
+    df[metric] = pd.to_numeric(df[metric], errors='coerce').fillna(0)
+
+# Farben für Storage-Typen
+colors = {
+    'file': '#1f77b4',
+    'db': '#ff7f0e',
+    'minio': '#2ca02c'
 }
-METRICS = {
-    "cpu": 'rate(container_cpu_usage_seconds_total{container_name="%s"}[1m])',
-    "memory": 'container_memory_usage_bytes{container_name="%s"} / 1024 / 1024',
-    "io_read": 'rate(container_fs_reads_bytes_total{container_name="%s"}[1m]) / 1024 / 1024',
-    "io_write": 'rate(container_fs_writes_bytes_total{container_name="%s"}[1m]) / 1024 / 1024',
-    "latency": 'locust_requests_median_response_time{tag="%s"} / 1000'
-}
 
+for file_size in ['small', 'medium', 'large']:
+    for metric, ylabel in [
+        ('latency', 'Latency (s)'),
+        ('cpu_usage', 'CPU Usage (%)'),
+        ('memory_usage', 'Memory Usage (MB)'),
+        ('io_read', 'IO Read (MB/s)'),
+        ('io_write', 'IO Write (MB/s)')
+    ]:
+        plt.figure(figsize=(10, 6))
 
-def fetch_metric_data(query, start, end):
-    try:
-        response = requests.get(
-            f"{PROM_URL}/query_range",
-            params={
-                "query": query,
-                "start": start,
-                "end": end,
-                "step": "1s"
-            },
-            timeout=10
-        )
-        return response.json()["data"]["result"]
-    except Exception as e:
-        print(f"Fehler bei Abfrage: {query}\n{str(e)}")
-        return []
+        subset = df[df['file_size'] == file_size]
+        storages = subset['storage'].unique()
+        values = [subset[subset['storage'] == s][metric].mean() for s in storages]
 
-
-def plot_combined_metric(metric, ylabel, filename):
-    plt.figure(figsize=(12, 6))
-
-    for benchmark in benchmarks:
-        service = benchmark["service"]
-        container_label = CONTAINERS[service]
-        query = METRICS[metric] % container_label
-
-        data = fetch_metric_data(
-            query,
-            benchmark["start"],
-            benchmark["end"]
-        )
-
-        if not data:
-            continue
-
-        timestamps = [float(point[0]) - benchmark["start"] for point in data[0]["values"]]
-        values = [float(point[1]) for point in data[0]["values"]]
-
-        plt.plot(
-            timestamps,
+        bars = plt.bar(
+            storages,
             values,
-            label=f"{service}",
-            linewidth=2
+            color=[colors[s] for s in storages],
+            edgecolor='black'
         )
 
-    plt.xlabel("Zeit seit Benchmark-Start (s)")
-    plt.ylabel(ylabel)
-    plt.xlim(0, RUNTIME)  # X-Achse auf Benchmark-Dauer beschränken
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(f"{filename}.png", dpi=300, bbox_inches="tight")
-    plt.close()
+        for bar in bars:
+            height = bar.get_height()
+            plt.text(
+                bar.get_x() + bar.get_width() / 2.,
+                height * 1.02,
+                f'{height:.2f}',
+                ha='center',
+                va='bottom'
+            )
 
+        plt.title(f'{file_size.capitalize()} File - {metric.replace("_", " ").title()}')
+        plt.xlabel('Storage Type')
+        plt.ylabel(ylabel)
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
 
-with open("benchmark_times.json") as f:
-    benchmarks = json.load(f)
+        # Log-Skala für bestimmte Metriken
+        if metric in ['latency', 'io_write']:
+            plt.yscale('log')
 
-RUNTIME = 60  # Muss mit run_benchmarks.py übereinstimmen
-plot_combined_metric("cpu", "CPU Usage (Kerne)", "cpu_usage")
-plot_combined_metric("memory", "Memory Usage (MB)", "memory_usage")
-plot_combined_metric("io_read", "Read I/O (MB/s)", "io_read")
-plot_combined_metric("io_write", "Write I/O (MB/s)", "io_write")
+        plt.tight_layout()
+        plt.savefig(f"{file_size}_{metric}_comparison.png")
+        plt.close()
