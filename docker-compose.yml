@@ -10,6 +10,7 @@ services:
       - .env
     environment:
       - STORAGE_BACKEND=file
+      - DATABASE_URL=${DATABASE_URL}
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
       - .:/app
@@ -26,7 +27,7 @@ services:
       - .env
     environment:
       - STORAGE_BACKEND=db
-      - DATABASE_URL=postgresql://arpas_user:securepassword@postgres:5432/arpas_db
+      - DATABASE_URL=${DATABASE_URL}
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     depends_on:
       postgres:

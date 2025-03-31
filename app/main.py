@@ -11,7 +11,7 @@ from app.routes import item_routes
 @asynccontextmanager
 async def lifespan(fast_api: FastAPI):
     if os.getenv("STORAGE_BACKEND") == "db":
-        init_db()
+        await init_db()
     yield
 
 

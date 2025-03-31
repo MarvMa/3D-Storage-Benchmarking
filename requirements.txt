@@ -17,4 +17,6 @@ pandas
 psycopg2-binary
 docker
 numpy
-
+asyncpg
+sqlalchemy[asyncio]
+seaborn

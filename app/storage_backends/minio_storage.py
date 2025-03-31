@@ -2,6 +2,8 @@ from io import BytesIO
 
 from fastapi import HTTPException
 from minio import Minio
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from .base_interface import StorageInterface
@@ -22,33 +24,39 @@ class MinioStorage(StorageInterface):
         if not bucket:
             self.client.make_bucket(self.bucket_name)
 
-    async def save_file(self, db: Session, name: str, data: bytes) -> Item:
+    async def save_file(self, db: AsyncSession, name: str, data: bytes) -> Item:
         try:
             file = BytesIO(data)
             self.client.put_object(self.bucket_name, name, file, length=-1, part_size=10 * 1024 * 1024)
             item = Item(name=name, filename=name, path_or_key=name, storage_type='minio')
             db.add(item)
-            db.commit()
-            db.refresh(item)
+            await db.commit()
+            await db.refresh(item)
             return item
         except Exception as e:
-            db.rollback()
+            await db.rollback()
             raise HTTPException(status_code=500, detail=str(e))
 
-    async def load_file(self, db: Session, item_id: int) -> bytes:
+    async def load_file(self, db: AsyncSession, item_id: int) -> bytes:
         try:
-            item = db.query(Item).get(item_id)
+            stmt = select(Item).where(Item.id == item_id)
+            result = await db.execute(stmt)
+            item = result.scalars().first()
+
             response = self.client.get_object(self.bucket_name, item.path_or_key)
             return response.read()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    async def delete_file(self, db: Session, item_id: int) -> None:
+    async def delete_file(self, db: AsyncSession, item_id: int) -> None:
         try:
-            item = db.query(Item).get(item_id)
+            stmt = select(Item).where(Item.id == item_id)
+            result = await db.execute(stmt)
+            item = result.scalars().first()
+
             self.client.remove_object(self.bucket_name, item.path_or_key)
-            db.delete(item)
-            db.commit()
+            await db.delete(item)
+            await db.commit()
         except Exception as e:
-            db.rollback()
+            await db.rollback()
             raise HTTPException(status_code=500, detail=str(e))

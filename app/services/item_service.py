@@ -1,4 +1,6 @@
 from fastapi import HTTPException, UploadFile
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.config import get_storage_backend
@@ -15,7 +17,7 @@ class ItemService:
     """
 
     @staticmethod
-    async def create_item(db: Session, name: str, description: str, file: UploadFile):
+    async def create_item(db: AsyncSession, name: str, description: str, file: UploadFile):
         """
         Create a new item and upload its associated file.
 
@@ -37,7 +39,7 @@ class ItemService:
         return await storage_backend.save_file(db, name, file_bytes)
 
     @staticmethod
-    async def download_item(db: Session, item_id: int):
+    async def download_item(db: AsyncSession, item_id: int):
         """
         Retrieve the file associated with an item by its ID.
 
@@ -51,14 +53,17 @@ class ItemService:
         Raises:
             - HTTPException with status code 404 if the item or the file is not found.
         """
-        item = db.query(Item).filter(Item.id == item_id).first()
+        stmt = select(Item).where(Item.id == item_id)
+        result = await db.execute(stmt)
+        item = result.scalars().first()
+
         if item is None:
             raise HTTPException(status_code=404, detail="Item not found")
 
         return await storage_backend.load_file(db, item.id), item.filename
 
     @staticmethod
-    async def delete_item(db: Session, item_id: int):
+    async def delete_item(db: AsyncSession, item_id: int):
         """
         Delete an item by its ID, and remove the associated file from the server.
 

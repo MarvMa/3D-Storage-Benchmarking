@@ -1,0 +1,17 @@
+{
+  "file": {
+    "small": 37,
+    "medium": 38,
+    "large": 39
+  },
+  "db": {
+    "small": 40,
+    "medium": 41,
+    "large": 42
+  },
+  "minio": {
+    "small": 43,
+    "medium": 44,
+    "large": 45
+  }
+}

@@ -1,13 +1,26 @@
 import enum
 import os
 
-from sqlalchemy import Column, Integer, String, create_engine, inspect, LargeBinary, Enum
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import Column, Integer, String, inspect, LargeBinary, Enum
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.orm import declarative_base
 
 # Database-Connection Settings and Session setup
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://arpas_user:securepassword@postgres:5432/arpas_db")
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+DATABASE_URL = os.getenv("DATABASE_URL")
+engine = create_async_engine(
+    DATABASE_URL,
+    pool_size=30,  # Maximale ständige Verbindungen
+    max_overflow=10,  # Temporäre zusätzliche Verbindungen
+    pool_timeout=30,  # Timeout für Verbindungsanfragen
+    pool_recycle=300  # Verbindungen nach 5 Minuten neu aufbauen
+)
+
+SessionLocal = async_sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
+    class_=AsyncSession
+)
 Base = declarative_base()
 
 
@@ -28,23 +41,23 @@ class Item(Base):
     content = Column(LargeBinary, nullable=True)  # nur für db
 
 
-def init_db():
-    inspector = inspect(engine)
-    existing_tables = inspector.get_table_names()
+async def init_db():
+    async with engine.begin() as conn:
+        # Prüfe, ob die Tabelle existiert (mit synchroner Verbindung)
+        table_exists = await conn.run_sync(
+            lambda sync_conn: inspect(sync_conn).has_table("items")
+        )
 
-    if not existing_tables:
-        try:
-            Base.metadata.create_all(bind=engine)
+        if not table_exists:
+            await conn.run_sync(Base.metadata.create_all)
             print("Datenbank-Schema erfolgreich erstellt.")
-        except Exception as e:
-            print(f"Fehler beim Erstellen des Schemas: {str(e)}")
-    else:
-        print("Schema existiert bereits. Keine Aktion erforderlich.")
+        else:
+            print("Schema existiert bereits.")
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def get_db():
+    async with SessionLocal() as db:
+        try:
+            yield db
+        finally:
+            await db.close()
