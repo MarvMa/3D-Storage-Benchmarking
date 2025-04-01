@@ -14,12 +14,12 @@ LOCALHOST_DB_URL = "http://localhost:8002"
 LOCALHOST_MINIO_URL = "http://localhost:8000"
 
 BENCHMARKS = [
-    {"storage": "file", "file_size": "small", "host": f"{WEB_FILE_URL}", "storage_container_name": "file"},
-    {"storage": "file", "file_size": "medium", "host": f"{WEB_FILE_URL}", "storage_container_name": "file"},
-    {"storage": "file", "file_size": "large", "host": f"{WEB_FILE_URL}", "storage_container_name": "file"},
-    {"storage": "db", "file_size": "small", "host": f"{WEB_DB_URL}", "storage_container_name": "arpas_postgres"},
-    {"storage": "db", "file_size": "medium", "host": f"{WEB_DB_URL}", "storage_container_name": "arpas_postgres"},
-    {"storage": "db", "file_size": "large", "host": f"{WEB_DB_URL}", "storage_container_name": "arpas_postgres"},
+    # {"storage": "file", "file_size": "small", "host": f"{WEB_FILE_URL}", "storage_container_name": "file"},
+    # {"storage": "file", "file_size": "medium", "host": f"{WEB_FILE_URL}", "storage_container_name": "file"},
+    # {"storage": "file", "file_size": "large", "host": f"{WEB_FILE_URL}", "storage_container_name": "file"},
+    # {"storage": "db", "file_size": "small", "host": f"{WEB_DB_URL}", "storage_container_name": "arpas_postgres"},
+    # {"storage": "db", "file_size": "medium", "host": f"{WEB_DB_URL}", "storage_container_name": "arpas_postgres"},
+    # {"storage": "db", "file_size": "large", "host": f"{WEB_DB_URL}", "storage_container_name": "arpas_postgres"},
     {"storage": "minio", "file_size": "small", "host": f"{WEB_MINIO_URL}", "storage_container_name": "minio-storage"},
     {"storage": "minio", "file_size": "medium", "host": f"{WEB_MINIO_URL}", "storage_container_name": "minio-storage"},
     {"storage": "minio", "file_size": "large", "host": f"{WEB_MINIO_URL}", "storage_container_name": "minio-storage"}
@@ -33,7 +33,7 @@ SPAWN_RATE = 5
 RUNTIME = 600  # 60 seconds per benchmark
 PAUSE = 30  # Cooldown between benchmarks
 
-PREUPLOADED_FILE_COUNT = 20
+PREUPLOADED_FILE_COUNT = 1000
 
 client = docker.from_env()
 PREUPLOADED_IDS_FILE = "preuploaded_ids.json"
