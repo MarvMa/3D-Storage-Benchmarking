@@ -14,24 +14,24 @@ LOCALHOST_DB_URL = "http://localhost:8002"
 LOCALHOST_MINIO_URL = "http://localhost:8000"
 
 BENCHMARKS = [
-    # {"storage": "file", "file_size": "small", "host": f"{WEB_FILE_URL}", "storage_container_name": "file"},
-    # {"storage": "file", "file_size": "medium", "host": f"{WEB_FILE_URL}", "storage_container_name": "file"},
+    {"storage": "file", "file_size": "small", "host": f"{WEB_FILE_URL}", "storage_container_name": "file"},
+    {"storage": "file", "file_size": "medium", "host": f"{WEB_FILE_URL}", "storage_container_name": "file"},
     {"storage": "file", "file_size": "large", "host": f"{WEB_FILE_URL}", "storage_container_name": "file"},
     {"storage": "db", "file_size": "small", "host": f"{WEB_DB_URL}", "storage_container_name": "arpas_postgres"},
     {"storage": "db", "file_size": "medium", "host": f"{WEB_DB_URL}", "storage_container_name": "arpas_postgres"},
     {"storage": "db", "file_size": "large", "host": f"{WEB_DB_URL}", "storage_container_name": "arpas_postgres"},
     {"storage": "minio", "file_size": "small", "host": f"{WEB_MINIO_URL}", "storage_container_name": "minio-storage"},
     {"storage": "minio", "file_size": "medium", "host": f"{WEB_MINIO_URL}", "storage_container_name": "minio-storage"},
-    {"storage": "minio", "file_size": "large", "host": f"{WEB_MINIO_URL}", "storage_container_name": "minio-storage"},
+    {"storage": "minio", "file_size": "large", "host": f"{WEB_MINIO_URL}", "storage_container_name": "minio-storage"}
 ]
 
 LOCUST_API = "http://localhost:8089"
 PROMETHEUS_API = "http://localhost:9090/api/v1"
 
-USERS = 100
-SPAWN_RATE = 20
+USERS = 50
+SPAWN_RATE = 5
 RUNTIME = 600  # 60 seconds per benchmark
-PAUSE = 100  # Cooldown between benchmarks
+PAUSE = 30  # Cooldown between benchmarks
 
 client = docker.from_env()
 PREUPLOADED_IDS_FILE = "preuploaded_ids.json"
@@ -81,7 +81,9 @@ def start_benchmark(host, file_size, storage):
 
     response = requests.post(
         f"{LOCUST_API}/swarm",
-        data={"user_count": USERS, "spawn_rate": SPAWN_RATE, "host": host}
+        data={"user_count": USERS,
+              "spawn_rate": SPAWN_RATE,
+              "host": host}
     )
     response.raise_for_status()
     return time.time()
@@ -113,6 +115,8 @@ def get_locust_stats():
 
 
 def collect_metrics(benchmark_name, storage_container_name, file_size, start_time, end_time):
+    print(f"Querying from {start_time} (Unix: {start_time}) to {end_time} (Unix: {end_time})")
+
     metrics = {
         "storage": benchmark_name,
         "file_size": file_size,
@@ -125,10 +129,23 @@ def collect_metrics(benchmark_name, storage_container_name, file_size, start_tim
         "io_write": []
     }
 
-    # Latency (median response time)
-    latency_data = query_prometheus('locust_requests_avg_response_time', start_time, end_time)
-    if latency_data:
-        metrics["latency"] = [float(point[1])  for point in latency_data[0]["values"]]
+    with open(PREUPLOADED_IDS_FILE, "r") as f:
+        preuploaded_ids = json.load(f)
+
+    try:
+        uploaded_id = preuploaded_ids[benchmark_name][file_size]
+    except KeyError:
+        raise Exception(f"❌ Keine Upload-ID für {benchmark_name}/{file_size} gefunden!")
+
+    # Latency (average response time)
+    latency_data = query_prometheus(
+        f'locust_requests_avg_response_time{{name="/items/{uploaded_id}/download"}}', start_time, end_time)
+
+    if not latency_data:
+        print(f"⚠️ Keine Latenzdaten für {uploaded_id} gefunden!")
+        metrics["latency"] = []
+    else:
+        metrics["latency"] = [float(point[1]) for point in latency_data[0]["values"]]
 
     # Requests per second (requests per second)
     rps_data = query_prometheus('locust_requests_current_rps', start_time, end_time)
@@ -167,6 +184,7 @@ def collect_metrics(benchmark_name, storage_container_name, file_size, start_tim
 
 
 def main():
+    stop_benchmark()
     results = []
     for benchmark in BENCHMARKS:
         storage = benchmark["storage"]
@@ -181,6 +199,7 @@ def main():
 
         print(f"\n=== Benchmark: {storage} | File: {file_size} | Host: {host} ===")
 
+        requests.get(f"{LOCUST_API}/stats/reset")
         start_time = start_benchmark(host, file_size, storage)
         time.sleep(RUNTIME)
         end_time = stop_benchmark()
@@ -191,7 +210,6 @@ def main():
         time.sleep(PAUSE)
         with open("benchmark_results.json", "w") as f:
             json.dump(results, f, indent=2)
-
 
     print("✅ Alle Benchmarks abgeschlossen. Ergebnisse in benchmark_results.json.")
 

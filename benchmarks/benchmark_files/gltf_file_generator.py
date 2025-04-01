@@ -23,9 +23,9 @@ def create_embedded_dummy_gltf(filename, target_size_bytes):
 
 if __name__ == "__main__":
     sizes = {
-        "small_model": 1 * 1024 * 1024,  # ~1MB
-        "medium_model": 10 * 1024 * 1024,  # ~1MB
-        "large_model": 100 * 1024 * 1024,  # ~100MB
+        "small_model": 0.5 * 1024 * 1024,  # ~0.5MB
+        "medium_model": 5 * 1024 * 1024,  # ~5MB
+        "large_model": 50 * 1024 * 1024,  # ~50MB
     }
 
     for name, size in sizes.items():
