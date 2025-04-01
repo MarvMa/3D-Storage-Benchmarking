@@ -1,7 +1,6 @@
 import base64
 
 from pygltflib import GLTF2, Buffer, Scene
-import os
 
 
 def create_embedded_dummy_gltf(filename, target_size_bytes):
@@ -23,7 +22,7 @@ def create_embedded_dummy_gltf(filename, target_size_bytes):
 
 if __name__ == "__main__":
     sizes = {
-        "small_model": 0.5 * 1024 * 1024,  # ~0.5MB
+        "small_model": 1 * 512 * 1024,  # ~0.5MB
         "medium_model": 5 * 1024 * 1024,  # ~5MB
         "large_model": 50 * 1024 * 1024,  # ~50MB
     }

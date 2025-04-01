@@ -38,15 +38,22 @@ class MinioStorage(StorageInterface):
             raise HTTPException(status_code=500, detail=str(e))
 
     async def load_file(self, db: AsyncSession, item_id: int) -> bytes:
+        response = None
         try:
             stmt = select(Item).where(Item.id == item_id)
             result = await db.execute(stmt)
             item = result.scalars().first()
-
-            response = self.client.get_object(self.bucket_name, item.path_or_key)
+            response =  self.client.get_object(self.bucket_name, item.path_or_key)
             return response.read()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            if response is not None:
+                try:
+                    response.close()
+                    response.release_conn()
+                except Exception as e:
+                    print(f"Fehler beim Schließen der Verbindung: {e}")
 
     async def delete_file(self, db: AsyncSession, item_id: int) -> None:
         try:

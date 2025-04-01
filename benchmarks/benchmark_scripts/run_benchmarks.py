@@ -33,6 +33,8 @@ SPAWN_RATE = 5
 RUNTIME = 600  # 60 seconds per benchmark
 PAUSE = 30  # Cooldown between benchmarks
 
+PREUPLOADED_FILE_COUNT = 20
+
 client = docker.from_env()
 PREUPLOADED_IDS_FILE = "preuploaded_ids.json"
 BENCHMARK_FILES_DIR = Path(__file__).parent.parent / "benchmark_files"
@@ -51,21 +53,22 @@ def preupload_files():
 
         for file_size in ["small", "medium", "large"]:
             file_path = BENCHMARK_FILES_DIR / f"{file_size}_model.gltf"
-            print(f"Uploading {file_size} to {storage}...")
+            print(f"Uploading {PREUPLOADED_FILE_COUNT} files with {file_size} file size to {storage}...")
 
-            with open(file_path, "rb") as f:
-                resp = requests.post(
-                    f"{host}/items/",
-                    files={"file": f},
-                    data={"name": f"{file_size}_model", "description": "Preuploaded for benchmark"}
-                )
-
-            if resp.status_code == 200:
-                item_id = resp.json().get("id")
-                preuploaded_ids[storage][file_size] = item_id
-                print(f"✅ Erfolg (ID: {item_id})")
-            else:
-                raise Exception(f"❌ Upload fehlgeschlagen: {resp.text}")
+            preuploaded_ids[storage][file_size] = []
+            for i in range(PREUPLOADED_FILE_COUNT):
+                with open(file_path, "rb") as f:
+                    resp = requests.post(
+                        f"{host}/items/",
+                        files={"file": f},
+                        data={"name": f"{file_size}_model_{i}", "description": "Preuploaded for benchmark"}
+                    )
+                if resp.status_code == 200:
+                    item_id = resp.json().get("id")
+                    preuploaded_ids[storage][file_size].append(item_id)
+                    print(f"✅ Upload Erfolgreich (ID: {item_id})")
+                else:
+                    raise Exception(f"❌ Upload fehlgeschlagen: {resp.text}")
 
     with open(PREUPLOADED_IDS_FILE, "w") as f:
         json.dump(preuploaded_ids, f, indent=2)
@@ -76,8 +79,16 @@ def preupload_files():
 def start_benchmark(host, file_size, storage):
     print(f"Starting benchmark for {storage} | {file_size}")
 
+    with open(PREUPLOADED_IDS_FILE) as pf:
+        ids = json.load(pf)
+    id_list = ids[storage][file_size]
+    current_id = id_list.pop(0)
+    id_list.append(current_id)
+    with open(PREUPLOADED_IDS_FILE, "w") as pf:
+        json.dump(ids, pf, indent=2)
+
     with open("current_benchmark.json", "w") as f:
-        json.dump({"file_size": file_size, "storage": storage}, f)
+        json.dump({"file_size": file_size, "storage": storage, "id": current_id}, f)
 
     response = requests.post(
         f"{LOCUST_API}/swarm",
@@ -100,6 +111,21 @@ def query_prometheus(query, start, end):
         f"{PROMETHEUS_API}/query_range",
         params={
             "query": query,
+            "start": start,
+            "end": end,
+            "step": "1s"
+        }
+    )
+    response.raise_for_status()
+    return response.json()["data"]["result"]
+
+
+def query_prometheus_for_locust(query, name, start, end):
+    response = requests.get(
+        f"{PROMETHEUS_API}/query_range",
+        params={
+            "query": query,
+            "name": name,
             "start": start,
             "end": end,
             "step": "1s"
@@ -138,8 +164,10 @@ def collect_metrics(benchmark_name, storage_container_name, file_size, start_tim
         raise Exception(f"❌ Keine Upload-ID für {benchmark_name}/{file_size} gefunden!")
 
     # Latency (average response time)
-    latency_data = query_prometheus(
-        f'locust_requests_avg_response_time{{name="/items/{uploaded_id}/download"}}', start_time, end_time)
+    latency_data = query_prometheus_for_locust('locust_requests_avg_response_time',
+                                               f'{benchmark_name}_{file_size}',
+                                               start_time,
+                                               end_time)
 
     if not latency_data:
         print(f"⚠️ Keine Latenzdaten für {uploaded_id} gefunden!")
@@ -199,7 +227,11 @@ def main():
 
         print(f"\n=== Benchmark: {storage} | File: {file_size} | Host: {host} ===")
 
-        requests.get(f"{LOCUST_API}/stats/reset")
+        resp = requests.get(f"{LOCUST_API}/stats/reset")
+        if resp.status_code != 200:
+            print(f"❌ Fehler beim Zurücksetzen der Locust-Statistiken: {resp.text}")
+            continue
+        print("✅ Locust-Statistiken zurückgesetzt.")
         start_time = start_benchmark(host, file_size, storage)
         time.sleep(RUNTIME)
         end_time = stop_benchmark()
