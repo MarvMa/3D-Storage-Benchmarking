@@ -9,10 +9,10 @@ from sqlalchemy.orm import declarative_base
 DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_async_engine(
     DATABASE_URL,
-    pool_size=30,  # Maximale ständige Verbindungen
-    max_overflow=10,  # Temporäre zusätzliche Verbindungen
-    pool_timeout=30,  # Timeout für Verbindungsanfragen
-    pool_recycle=300  # Verbindungen nach 5 Minuten neu aufbauen
+    pool_size=30,
+    max_overflow=10,
+    pool_timeout=30,
+    pool_recycle=300
 )
 
 SessionLocal = async_sessionmaker(
@@ -25,12 +25,34 @@ Base = declarative_base()
 
 
 class StorageTypeEnum(str, enum.Enum):
+    """Enum representing available storage backend types for persistent data storage.
+
+       Values:
+           db: Relational database storage (BLOB in database)
+           file: Local filesystem storage
+           minio:  object storage (MinIO implementation)
+       """
     db = "db"
     file = "file"
     minio = "minio"
 
 
 class Item(Base):
+    """Database model for storing metadata and references to persisted files.
+
+    Attributes:
+        id (int): Auto-incremented primary key identifier
+        name (str): Human-readable display name for the file
+        filename (str): Original filename with extension
+        storage_type (StorageTypeEnum): Storage backend used for this file
+        path_or_key (str | None):
+            - Filesystem path (for 'file' storage_type)
+            - Object storage key (for 'minio' storage_type)
+            - Null for 'db' storage_type
+        content (bytes | None):
+            - Raw file content (only populated for 'db' storage_type)
+            - Null for 'file' and 'minio' storage_types
+    """
     __tablename__ = "items"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -43,7 +65,6 @@ class Item(Base):
 
 async def init_db():
     async with engine.begin() as conn:
-        # Prüfe, ob die Tabelle existiert (mit synchroner Verbindung)
         table_exists = await conn.run_sync(
             lambda sync_conn: inspect(sync_conn).has_table("items")
         )

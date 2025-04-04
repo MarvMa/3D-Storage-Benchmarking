@@ -141,23 +141,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      bench_network:
-#  locust-exporter:
-  #    image: vokash3/locust_exporter:latest
-  #    ports:
-  #      - "9646:9646"
-  #    environment:
-  #      - LOCUST_HOST=http://locust:8089
-  #      - EXPORTER_PORT=9646
-  #    depends_on:
-  #      - locust
-  #    healthcheck:
-  #      test: [ "CMD-SHELL", "pgrep locust_exporter" ]
-  #      interval: 10s
-  #      timeout: 5s
-  #      retries: 5
-  #    networks:
-  #      bench_network:
+      bench_network: 
   socat:
     image: alpine/socat
     container_name: socat

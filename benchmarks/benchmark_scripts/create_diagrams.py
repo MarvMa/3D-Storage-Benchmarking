@@ -17,6 +17,20 @@ LINE_STYLES = {'file': '-', 'db': '-', 'minio': '-'}
 
 
 def format_axis(value, pos):
+    """Dynamic axis label formatter for human-readable numeric scales.
+
+        Converts values to appropriate SI prefixes:
+        - Values >= 1,000,000 formatted as M (mega)
+        - Values >= 1,000 formatted as k (kilo)
+        - Values < 1 shown with 2 decimal places
+
+        Args:
+            value: Raw numeric value to format
+            pos: Matplotlib position parameter (unused)
+
+        Returns:
+            str: Formatted string with metric prefix
+        """
     if value >= 1e6:
         return f'{value * 1e-6:.1f}M'
     if value >= 1e3:
@@ -27,13 +41,43 @@ def format_axis(value, pos):
 
 
 METRIC_CONFIG = {
-    'latency': {'unit': 'ms', 'formatter': format_axis},
-    'cpu_usage': {'unit': '%', 'formatter': format_axis},
-    'memory_usage': {'unit': 'GB', 'formatter': format_axis}
+    'latency': {
+        'unit': 'ms',
+        'formatter': format_axis  # Milliseconds with dynamic scaling
+    },
+    'cpu_usage': {
+        'unit': '%',
+        'formatter': format_axis  # Percentage with decimal precision
+    },
+    'memory_usage': {
+        'unit': 'GB',
+        'formatter': format_axis  # Gigabytes with decimal precision
+    }
 }
 
 
 def load_data(filepath: str) -> pd.DataFrame:
+    """Loads and preprocesses benchmark results from JSON format.
+
+        Args:
+            filepath: Path to JSON file containing benchmark results
+
+        Returns:
+            pd.DataFrame: Processed DataFrame with:
+            - storage: Storage backend type (file/db/minio)
+            - file_size: Categorical size (small/medium/large)
+            - Metrics as numpy arrays (latency, cpu_usage, memory_usage)
+
+        Raises:
+            FileNotFoundError: If specified filepath doesn't exist
+            JSONDecodeError: For invalid JSON formatting
+
+        Preprocessing steps:
+            1. Normalizes nested JSON structure
+            2. Converts file_size to ordered category
+            3. Converts metric lists to numpy arrays
+            4. Converts memory usage to gigabytes
+        """
     with open(filepath, 'r') as f:
         data = json.load(f)
 
@@ -53,6 +97,12 @@ def load_data(filepath: str) -> pd.DataFrame:
 
 
 def auto_scale(values: np.ndarray) -> str:
+    """Determines appropriate y-axis scaling based on value range.
+        Args:
+            values: Array of metric values
+        Returns:
+            str: 'log' for large value ranges (>1000x), 'linear' otherwise
+        """
     if len(values) == 0:
         return 'linear'
     value_range = np.nanmax(values) - np.nanmin(values)
@@ -60,6 +110,18 @@ def auto_scale(values: np.ndarray) -> str:
 
 
 def create_ts_plots(df: pd.DataFrame) -> None:
+    """Generates time series plots for each metric and file size combination.
+
+       Creates 9 total plots (3 metrics × 3 file sizes) showing metric evolution
+       over 600 second test duration. Plots are saved to 'diagrams' directory.
+
+       Args:
+           df: Processed DataFrame from load_data()
+
+       Output files:
+           diagrams/{metric}_{file_size}.png
+           (e.g., latency_small.png, cpu_usage_large.png)
+       """
     for metric, config in METRIC_CONFIG.items():
         for file_size in ['small', 'medium', 'large']:
             fig, ax = plt.subplots(figsize=FIGSIZE)
@@ -99,6 +161,18 @@ def create_ts_plots(df: pd.DataFrame) -> None:
 
 
 def create_bar_plots(df: pd.DataFrame) -> None:
+    """Generates aggregated bar charts comparing median metric values.
+
+        Creates 3 total plots (one per metric) showing performance comparison
+        across storage backends and file sizes. Plots saved to 'diagrams' directory.
+
+        Args:
+            df: Processed DataFrame from load_data()
+
+        Output files:
+            diagrams/aggregated_{metric}.png
+            (e.g., aggregated_latency.png)
+        """
     for metric, config in METRIC_CONFIG.items():
         fig, ax = plt.subplots(figsize=FIGSIZE)
 

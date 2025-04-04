@@ -1,7 +1,6 @@
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 
 from app.config import get_storage_backend
 from app.models import Item
